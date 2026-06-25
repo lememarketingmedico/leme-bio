@@ -4,11 +4,21 @@
 
   const previewTargets = [document.getElementById('builder-preview'), document.getElementById('builder-preview-mobile')].filter(Boolean);
   const linksList = document.getElementById('builder-links-list');
-  const addLinkBtn = document.getElementById('add-link-btn');
-  const template = document.getElementById('link-row-template');
-  const linkCountEl = document.getElementById('link-count');
+  const addTemplate = document.getElementById('link-row-template');
+  const avatarInput = document.getElementById('avatar-file-input');
+  const logoInput = document.getElementById('logo-file-input');
 
-  const modal = document.getElementById('link-modal-backdrop');
+  const sectionModal = document.getElementById('section-modal-backdrop');
+  const sectionTitle = document.getElementById('section-modal-title');
+  const sectionInput = document.getElementById('section-input');
+  const sectionTextarea = document.getElementById('section-textarea');
+  const sectionSingleField = document.getElementById('section-single-field');
+  const sectionTextareaField = document.getElementById('section-textarea-field');
+  const saveSectionBtn = document.getElementById('save-section-btn');
+  const cancelSectionBtn = document.getElementById('cancel-section-btn');
+  const closeSectionBtn = document.getElementById('close-section-modal');
+
+  const linkModal = document.getElementById('link-modal-backdrop');
   const modalLabel = document.getElementById('modal-link-label');
   const modalUrl = document.getElementById('modal-link-url');
   const modalIcon = document.getElementById('modal-link-icon');
@@ -19,7 +29,10 @@
   const closeLinkModal = document.getElementById('close-link-modal');
   const deleteLinkBtn = document.getElementById('delete-link-btn');
 
+  let activeSection = null;
   let activeCard = null;
+  let avatarPreviewUrl = '';
+  let logoPreviewUrl = '';
 
   const iconSvg = {
     link: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 13.4a3 3 0 0 1 0-4.2l2.6-2.6a3 3 0 0 1 4.2 4.2l-.8.8"/><path d="M13.4 10.6a3 3 0 0 1 0 4.2l-2.6 2.6a3 3 0 1 1-4.2-4.2l.8-.8"/></svg>',
@@ -35,21 +48,14 @@
     download: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v9"/><path d="m8.5 10.5 3.5 3.5 3.5-3.5"/><path d="M5 18.5h14"/></svg>',
     star: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.8 2.5 5 5.5.8-4 3.9 1 5.5-5-2.6-5 2.6 1-5.5-4-3.9 5.5-.8L12 3.8Z"/></svg>',
     clinic: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19V8.5C6 6 8 4 10.5 4h3C16 4 18 6 18 8.5V19"/><path d="M9 19v-4h6v4"/><path d="M10.5 8h3M12 6.5v3"/></svg>',
-    doctor: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M7 18c.7-2.5 2.7-4 5-4s4.3 1.5 5 4"/><path d="M18.5 9.5v4M16.5 11.5h4"/></svg>'
+    doctor: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M7 18c.7-2.5 2.7-4 5-4s4.3 1.5 5 4"/><path d="M18.5 9.5v4M16.5 11.5h4"/></svg>',
+    edit: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4.8L19 9.8a2.2 2.2 0 0 0-3.1-3.1L5.7 16.9 4 20Z"/><path d="m14.5 8.1 3.4 3.4"/></svg>',
+    plus: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>'
   };
 
-  function qs(name) {
-    return form.querySelector(`[name="${name}"]`);
-  }
-
-  function getCards() {
-    return [...linksList.querySelectorAll('[data-link-card]')];
-  }
-
-  function getField(card, field) {
-    return card.querySelector(`[data-field="${field}"]`);
-  }
-
+  function qs(name) { return form.querySelector(`[name="${name}"]`); }
+  function getCards() { return [...linksList.querySelectorAll('[data-link-card]')]; }
+  function getField(card, field) { return card.querySelector(`[data-field="${field}"]`); }
   function getCardData(card) {
     return {
       label: getField(card, 'label')?.value || '',
@@ -59,28 +65,15 @@
       is_highlight: getField(card, 'highlight')?.value === 'on'
     };
   }
-
   function setCardData(card, data) {
     getField(card, 'label').value = data.label || '';
     getField(card, 'url').value = data.url || '';
     getField(card, 'icon').value = data.icon || 'link';
     getField(card, 'description').value = data.description || '';
     getField(card, 'highlight').value = data.is_highlight ? 'on' : '';
-
-    const labelDisplay = card.querySelector('[data-display="label"]');
-    const urlDisplay = card.querySelector('[data-display="url"]');
-    const metaDisplay = card.querySelector('.builder-link-card-meta');
-    const iconDisplay = card.querySelector('.builder-link-card-icon');
-
-    if (labelDisplay) labelDisplay.textContent = data.label || 'Novo botão';
-    if (urlDisplay) urlDisplay.textContent = data.url || 'Clique para configurar';
-    if (metaDisplay) metaDisplay.textContent = data.is_highlight ? 'Destaque' : 'Editar';
-    if (iconDisplay) iconDisplay.innerHTML = iconSvg[data.icon] || iconSvg.link;
   }
-
   function reindexLinks() {
-    const cards = getCards();
-    cards.forEach((card, index) => {
+    getCards().forEach((card, index) => {
       card.dataset.index = String(index);
       getField(card, 'label').name = `link_label_${index}`;
       getField(card, 'url').name = `link_url_${index}`;
@@ -88,49 +81,78 @@
       getField(card, 'description').name = `link_description_${index}`;
       getField(card, 'highlight').name = `link_highlight_${index}`;
     });
-    linkCountEl.textContent = String(cards.length);
-    addLinkBtn.disabled = cards.length >= 10;
+  }
+  function slugify(value) {
+    return String(value || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '').slice(0, 80);
+  }
+  function getState() {
+    return {
+      title: qs('title')?.value.trim() || '',
+      slug: qs('slug')?.value.trim() || '',
+      subtitle: qs('subtitle')?.value.trim() || '',
+      description: qs('description')?.value.trim() || '',
+      template: qs('template')?.value || 'ocean',
+      buttonStyle: qs('button_style')?.value || 'glass',
+      primary: qs('primary_color_text')?.value || qs('primary_color')?.value || '#1E5C89',
+      secondary: qs('secondary_color_text')?.value || qs('secondary_color')?.value || '#5DA1D1',
+      background1: qs('background_color_text')?.value || qs('background_color')?.value || '#081321',
+      background2: qs('background_color_2_text')?.value || qs('background_color_2')?.value || '#123250',
+      links: getCards().map(getCardData).filter(item => item.label || item.url || item.description)
+    };
   }
 
-  function bindCardActions() {
-    getCards().forEach(card => {
-      const btn = card.querySelector('[data-edit-link]');
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = '1';
-      btn.addEventListener('click', () => openModal(card));
+  function renderAvatarHtml(state) {
+    if (avatarPreviewUrl) return `<img class="avatar" src="${avatarPreviewUrl}" alt="Prévia">`;
+    const existing = document.querySelector('#builder-preview .avatar:not(.fallback)');
+    if (existing && existing.getAttribute('src') && !existing.getAttribute('src').startsWith('data:')) return `<img class="avatar" src="${existing.getAttribute('src')}" alt="Prévia">`;
+    return `<div class="avatar fallback">${escapeHtml((state.title || 'L').charAt(0).toUpperCase())}</div>`;
+  }
+
+  function renderLinksHtml(state) {
+    const links = state.links.map((link, index) => `
+      <div class="public-link-wrap editable-public-link">
+        <a class="public-link ${link.is_highlight ? 'highlight' : ''}" href="#" onclick="return false">
+          <span class="link-icon">${iconSvg[link.icon] || iconSvg.link}</span>
+          <span class="link-copy"><strong>${escapeHtml(link.label || 'Novo botão')}</strong>${link.description ? `<small>${escapeHtml(link.description)}</small>` : ''}</span>
+          <span class="arrow">${iconSvg.link}</span>
+        </a>
+        <button class="edit-bubble link-edit-bubble" type="button" data-edit-link-index="${index}" aria-label="Editar botão">${iconSvg.edit}</button>
+      </div>
+    `).join('');
+    return `${links}<button class="add-link-dashed" type="button" data-add-link>${iconSvg.plus}<span>Adicionar novo botão</span></button>`;
+  }
+
+  function renderPreview() {
+    const state = getState();
+    if (!state.slug && state.title) qs('slug').value = slugify(state.title);
+
+    previewTargets.forEach(preview => {
+      preview.className = `phone-screen preview-surface template-${state.template} buttons-${state.buttonStyle}`;
+      preview.style.setProperty('--primary', state.primary);
+      preview.style.setProperty('--secondary', state.secondary);
+      preview.style.setProperty('--text', '#FFFFFF');
+      preview.style.background = `radial-gradient(circle at 20% 0%, ${state.secondary}40 0, transparent 28%), linear-gradient(145deg, ${state.background1}, ${state.background2})`;
+
+      const avatarWrap = preview.querySelector('.avatar-wrap');
+      const titleEl = preview.querySelector('h1');
+      const subtitleEl = preview.querySelector('.subtitle');
+      const descriptionEl = preview.querySelector('.description');
+      const linksStack = preview.querySelector('.links-stack');
+      const logo = preview.querySelector('.client-logo');
+
+      if (avatarWrap) avatarWrap.innerHTML = renderAvatarHtml(state);
+      if (titleEl) titleEl.textContent = state.title || 'Seu nome ou marca';
+      if (subtitleEl) subtitleEl.textContent = state.subtitle || 'Seu subtítulo aparece aqui';
+      if (descriptionEl) descriptionEl.textContent = state.description || 'Uma descrição curta para apresentar seu trabalho, serviço ou marca.';
+      if (linksStack) linksStack.innerHTML = renderLinksHtml(state);
+      if (logoPreviewUrl) {
+        if (logo) logo.src = logoPreviewUrl;
+        else preview.querySelector('.bio-phone').insertAdjacentHTML('afterbegin', `<img class="client-logo" src="${logoPreviewUrl}" alt="Logo">`);
+      }
     });
-  }
-
-  function openModal(card) {
-    activeCard = card;
-    const data = getCardData(card);
-    modalLabel.value = data.label;
-    modalUrl.value = data.url;
-    modalIcon.value = data.icon;
-    modalDescription.value = data.description;
-    modalHighlight.checked = data.is_highlight;
-    modal.hidden = false;
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => modalLabel.focus(), 20);
-  }
-
-  function closeModal() {
-    modal.hidden = true;
-    document.body.style.overflow = '';
-    activeCard = null;
-  }
-
-  function addLinkCard() {
-    const current = getCards().length;
-    if (current >= 10) return;
-    const html = template.innerHTML.replaceAll('__INDEX__', String(current));
-    linksList.insertAdjacentHTML('beforeend', html);
-    reindexLinks();
-    bindCardActions();
-    const newCard = getCards()[getCards().length - 1];
-    setCardData(newCard, { label: '', url: '', icon: 'link', description: '', is_highlight: false });
-    renderPreview();
-    openModal(newCard);
   }
 
   function updateColorSync() {
@@ -146,119 +168,74 @@
     });
   }
 
-  function autoSlugify() {
-    const slugInput = qs('slug');
-    const titleInput = qs('title');
-    if (!slugInput || !titleInput) return;
-    if (!slugInput.value) {
-      titleInput.addEventListener('input', () => {
-        if (slugInput.dataset.touched) return;
-        slugInput.value = titleInput.value
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 80);
-        renderPreview();
-      });
+  function applyPreset(value) {
+    const [primary, secondary, bg1, bg2] = String(value || '').split(',');
+    const fields = [
+      ['primary_color', primary], ['secondary_color', secondary], ['background_color', bg1], ['background_color_2', bg2]
+    ];
+    fields.forEach(([name, color]) => {
+      const picker = qs(name);
+      const text = qs(`${name}_text`);
+      if (picker && color) picker.value = color;
+      if (text && color) text.value = color;
+    });
+    renderPreview();
+  }
+
+  function openSectionModal(section) {
+    if (section === 'avatar') { avatarInput.click(); return; }
+    if (section === 'logo') { logoInput.click(); return; }
+    activeSection = section;
+    const labels = { title: 'Editar nome', subtitle: 'Editar subtítulo', description: 'Editar descrição' };
+    sectionTitle.textContent = labels[section] || 'Editar seção';
+    const isLong = section === 'description';
+    sectionSingleField.hidden = isLong;
+    sectionTextareaField.hidden = !isLong;
+    if (isLong) sectionTextarea.value = qs(section)?.value || '';
+    else sectionInput.value = qs(section)?.value || '';
+    sectionModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => (isLong ? sectionTextarea : sectionInput).focus(), 20);
+  }
+  function closeSectionModalFn() { sectionModal.hidden = true; document.body.style.overflow = ''; activeSection = null; }
+  function saveSection() {
+    if (!activeSection) return;
+    const value = activeSection === 'description' ? sectionTextarea.value.trim() : sectionInput.value.trim();
+    const input = qs(activeSection);
+    if (input) input.value = value;
+    if (activeSection === 'title' && (!qs('slug').value || qs('slug').dataset.auto !== '0')) {
+      qs('slug').value = slugify(value);
+      qs('slug').dataset.auto = '1';
     }
-    slugInput.addEventListener('input', () => { slugInput.dataset.touched = '1'; renderPreview(); });
+    renderPreview();
+    closeSectionModalFn();
   }
 
-  function attachImagePreview(name, selector, isLogo) {
-    const input = qs(name);
-    if (!input) return;
-    input.addEventListener('change', () => {
-      const file = input.files && input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        previewTargets.forEach(target => {
-          let el = target.querySelector(selector);
-          if (!el && !isLogo) {
-            const wrap = target.querySelector('.avatar-wrap');
-            wrap.innerHTML = `<img class="avatar" src="${reader.result}" alt="Prévia">`;
-          } else if (!el && isLogo) {
-            const firstChild = target.querySelector('.bio-phone').firstElementChild;
-            if (!firstChild || !firstChild.classList.contains('client-logo')) {
-              target.querySelector('.bio-phone').insertAdjacentHTML('afterbegin', `<img class="client-logo" src="${reader.result}" alt="Logo">`);
-            }
-          }
-          el = target.querySelector(selector);
-          if (el) el.src = reader.result;
-        });
-      };
-      reader.readAsDataURL(file);
-    });
+  function openLinkModal(card) {
+    activeCard = card;
+    const data = getCardData(card);
+    modalLabel.value = data.label;
+    modalUrl.value = data.url;
+    modalIcon.value = data.icon;
+    modalDescription.value = data.description;
+    modalHighlight.checked = data.is_highlight;
+    deleteLinkBtn.hidden = getCards().length <= 1;
+    linkModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => modalLabel.focus(), 20);
   }
-
-  function getState() {
+  function closeLinkModalFn() { linkModal.hidden = true; document.body.style.overflow = ''; activeCard = null; }
+  function addLinkCard() {
     const cards = getCards();
-    return {
-      title: qs('title')?.value.trim() || '',
-      subtitle: qs('subtitle')?.value.trim() || '',
-      description: qs('description')?.value.trim() || '',
-      template: qs('template')?.value || 'premium',
-      buttonStyle: qs('button_style')?.value || 'glass',
-      primary: qs('primary_color_text')?.value || qs('primary_color')?.value || '#2E6C96',
-      secondary: qs('secondary_color_text')?.value || qs('secondary_color')?.value || '#5EA4D3',
-      background1: qs('background_color_text')?.value || qs('background_color')?.value || '#081321',
-      background2: qs('background_color_2_text')?.value || qs('background_color_2')?.value || '#123250',
-      links: cards.map(getCardData).filter(item => item.label || item.url || item.description)
-    };
+    if (cards.length >= 10) return;
+    linksList.insertAdjacentHTML('beforeend', addTemplate.innerHTML.replaceAll('__INDEX__', String(cards.length)));
+    reindexLinks();
+    activeCard = getCards()[getCards().length - 1];
+    setCardData(activeCard, { label: '', url: '', icon: 'link', description: '', is_highlight: false });
+    renderPreview();
+    openLinkModal(activeCard);
   }
-
-  function renderPreview() {
-    const state = getState();
-
-    previewTargets.forEach(preview => {
-      preview.className = `phone-screen preview-surface template-${state.template} buttons-${state.buttonStyle}`;
-      preview.style.setProperty('--primary', state.primary);
-      preview.style.setProperty('--secondary', state.secondary);
-      preview.style.setProperty('--text', '#FFFFFF');
-      preview.style.background = `radial-gradient(circle at 20% 0%, ${state.secondary}40 0, transparent 28%), linear-gradient(145deg, ${state.background1}, ${state.background2})`;
-
-      const titleEl = preview.querySelector('h1');
-      const subtitleEl = preview.querySelector('.subtitle');
-      const descriptionEl = preview.querySelector('.description');
-      const avatarFallback = preview.querySelector('.avatar.fallback');
-      const quickLinks = preview.querySelector('.quick-links');
-      const linksStack = preview.querySelector('.links-stack');
-
-      if (titleEl) titleEl.textContent = state.title || 'Seu nome ou marca';
-      if (subtitleEl) subtitleEl.textContent = state.subtitle || 'Seu subtítulo aparece aqui';
-      if (descriptionEl) descriptionEl.textContent = state.description || 'Uma descrição curta para apresentar seu trabalho, serviço ou marca.';
-      if (avatarFallback) avatarFallback.textContent = (state.title || 'L').charAt(0).toUpperCase();
-      if (quickLinks) quickLinks.style.display = 'none';
-
-      if (linksStack) {
-        if (!state.links.length) {
-          linksStack.innerHTML = '<p class="empty-public">Adicione até 10 botões e veja o resultado em tempo real.</p>';
-        } else {
-          linksStack.innerHTML = state.links.map(link => `
-            <a class="public-link ${link.is_highlight ? 'highlight' : ''}" href="#" onclick="return false">
-              <span class="link-icon">${iconSvg[link.icon] || iconSvg.link}</span>
-              <span class="link-copy"><strong>${escapeHtml(link.label || 'Novo botão')}</strong>${link.description ? `<small>${escapeHtml(link.description)}</small>` : ''}</span>
-              <span class="arrow">${iconSvg.link}</span>
-            </a>
-          `).join('');
-        }
-      }
-    });
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function handleModalSave() {
+  function saveLink() {
     if (!activeCard) return;
     setCardData(activeCard, {
       label: modalLabel.value.trim(),
@@ -268,38 +245,84 @@
       is_highlight: modalHighlight.checked
     });
     renderPreview();
-    closeModal();
+    closeLinkModalFn();
   }
-
-  function handleModalDelete() {
-    if (!activeCard) return;
-    const toRemove = activeCard;
-    closeModal();
-    toRemove.remove();
+  function deleteLink() {
+    if (!activeCard || getCards().length <= 1) return;
+    activeCard.remove();
     reindexLinks();
     renderPreview();
+    closeLinkModalFn();
   }
+
+  function attachImagePreview(input, type) {
+    if (!input) return;
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (type === 'avatar') avatarPreviewUrl = reader.result;
+        if (type === 'logo') logoPreviewUrl = reader.result;
+        renderPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const sectionBtn = event.target.closest('[data-edit-section]');
+    if (sectionBtn && form.contains(sectionBtn)) {
+      event.preventDefault();
+      openSectionModal(sectionBtn.dataset.editSection);
+      return;
+    }
+    const sectionArea = event.target.closest('[data-edit-section-area]');
+    if (sectionArea && form.contains(sectionArea)) {
+      event.preventDefault();
+      openSectionModal(sectionArea.dataset.editSectionArea);
+      return;
+    }
+    const linkBtn = event.target.closest('[data-edit-link-index]');
+    if (linkBtn && form.contains(linkBtn)) {
+      event.preventDefault();
+      const card = getCards()[Number(linkBtn.dataset.editLinkIndex)];
+      if (card) openLinkModal(card);
+      return;
+    }
+    const addBtn = event.target.closest('[data-add-link]');
+    if (addBtn && form.contains(addBtn)) {
+      event.preventDefault();
+      addLinkCard();
+      return;
+    }
+    const preset = event.target.closest('[data-preset]');
+    if (preset && form.contains(preset)) {
+      event.preventDefault();
+      applyPreset(preset.dataset.preset);
+    }
+  });
 
   form.addEventListener('input', renderPreview);
   form.addEventListener('change', renderPreview);
-
-  addLinkBtn.addEventListener('click', addLinkCard);
-  saveLinkBtn.addEventListener('click', handleModalSave);
-  cancelLinkBtn.addEventListener('click', closeModal);
-  closeLinkModal.addEventListener('click', closeModal);
-  deleteLinkBtn.addEventListener('click', handleModalDelete);
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !modal.hidden) closeModal();
+  saveSectionBtn.addEventListener('click', saveSection);
+  cancelSectionBtn.addEventListener('click', closeSectionModalFn);
+  closeSectionBtn.addEventListener('click', closeSectionModalFn);
+  sectionModal.addEventListener('click', e => { if (e.target === sectionModal) closeSectionModalFn(); });
+  saveLinkBtn.addEventListener('click', saveLink);
+  cancelLinkBtn.addEventListener('click', closeLinkModalFn);
+  closeLinkModal.addEventListener('click', closeLinkModalFn);
+  deleteLinkBtn.addEventListener('click', deleteLink);
+  linkModal.addEventListener('click', e => { if (e.target === linkModal) closeLinkModalFn(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!sectionModal.hidden) closeSectionModalFn();
+    if (!linkModal.hidden) closeLinkModalFn();
   });
 
   updateColorSync();
-  autoSlugify();
-  bindCardActions();
+  attachImagePreview(avatarInput, 'avatar');
+  attachImagePreview(logoInput, 'logo');
   reindexLinks();
-  attachImagePreview('avatar', '.avatar', false);
-  attachImagePreview('logo', '.client-logo', true);
   renderPreview();
 })();

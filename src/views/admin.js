@@ -82,7 +82,7 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
   const analyticsHtml = analytics ? renderAnalytics(analytics) : '';
 
   const body = `
-    ${pageHeader(isEdit ? `Editar ${bio.title}` : 'Nova página', isEdit ? `Página pública: /${bio.slug}` : 'Cadastre uma página de link na bio.', isEdit ? `<a class="btn" href="${publicUrl}" target="_blank">Ver página</a>` : '')}
+    ${pageHeader(isEdit ? `Editar ${bio.title}` : 'Nova página', isEdit ? `Página pública: /${bio.slug}` : 'Cadastre uma página de link na bio.', isEdit ? `<div class="header-actions"><a class="btn" href="${publicUrl}" target="_blank">Ver página</a>${bio.edit_token ? `<a class="btn primary" href="/edit/${escapeAttr(bio.edit_token)}" target="_blank">Editar no mockup</a>` : ''}</div>` : '')}
     ${error ? `<div class="alert danger">${escapeHtml(error)}</div>` : ''}
     <form class="editor-grid" method="post" action="${action}" enctype="multipart/form-data">
       <section class="panel editor-main">
@@ -104,8 +104,8 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
       <section class="panel">
         <h2>Visual</h2>
         <div class="grid-2">
-          ${select('template', 'Template', bio.template || 'premium', [['premium','Premium'],['clinic','Clínica'],['minimal','Minimalista'],['dark','Dark elegante']])}
-          ${select('button_style', 'Estilo dos botões', bio.button_style || 'glass', [['glass','Vidro fosco'],['solid','Sólido'],['outline','Contorno'],['soft','Suave']])}
+          ${select('template', 'Template', bio.template || 'premium', [['premium','Premium azul'],['clinic','Clínica clean'],['minimal','Minimalista'],['dark','Dark elegante'],['ocean','Ocean LEME'],['light','Claro premium'],['editorial','Editorial']])}
+          ${select('button_style', 'Estilo dos botões', bio.button_style || 'glass', [['glass','Vidro'],['solid','Sólido'],['outline','Contorno'],['soft','Suave'],['pill','Pílula'],['clean','Clean'],['shadow','Com sombra'],['glow','Glow']])}
           ${select('background_type', 'Tipo de fundo', bio.background_type || 'gradient', [['gradient','Degradê'],['solid','Cor sólida'],['image','Imagem']])}
           ${select('font_family', 'Fonte', bio.font_family || 'inter', [['inter','Moderna'],['serif','Editorial'],['rounded','Arredondada']])}
         </div>

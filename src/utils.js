@@ -93,7 +93,9 @@ const iconPaths = {
   download: '<path d="M12 4.5v9"/><path d="m8.5 10.5 3.5 3.5 3.5-3.5"/><path d="M5 18.5h14"/>',
   star: '<path d="m12 3.8 2.5 5 5.5.8-4 3.9 1 5.5-5-2.6-5 2.6 1-5.5-4-3.9 5.5-.8L12 3.8Z"/>',
   clinic: '<path d="M6 19V8.5C6 6 8 4 10.5 4h3C16 4 18 6 18 8.5V19"/><path d="M9 19v-4h6v4"/><path d="M10.5 8h3M12 6.5v3"/>',
-  doctor: '<circle cx="12" cy="8" r="3"/><path d="M7 18c.7-2.5 2.7-4 5-4s4.3 1.5 5 4"/><path d="M18.5 9.5v4M16.5 11.5h4"/>'
+  doctor: '<circle cx="12" cy="8" r="3"/><path d="M7 18c.7-2.5 2.7-4 5-4s4.3 1.5 5 4"/><path d="M18.5 9.5v4M16.5 11.5h4"/>',
+  edit: '<path d="M4 20h4.8L19 9.8a2.2 2.2 0 0 0-3.1-3.1L5.7 16.9 4 20Z"/><path d="m14.5 8.1 3.4 3.4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>'
 };
 
 function renderIcon(icon = 'link', className = '') {

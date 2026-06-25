@@ -168,3 +168,4 @@ textarea { resize: vertical; }
   .builder-modal-actions .btn, .builder-modal-actions-right { width: 100%; }
   .builder-modal-actions-right { display: grid; }
 }
+.header-actions { display: flex; gap: 10px; flex-wrap: wrap; }

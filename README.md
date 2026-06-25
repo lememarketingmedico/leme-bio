@@ -176,3 +176,16 @@ Isso reduz o peso das páginas e melhora a abertura do link na bio.
 - Pixel Meta por página
 - UTM automática por link
 - Templates por nicho
+
+## 10. Segurança dos dados e persistência
+
+As páginas ficam salvas no PostgreSQL. As imagens ficam salvas na pasta `uploads`.
+
+Para não perder nada em deploy ou reinicialização, no EasyPanel é obrigatório manter:
+
+- serviço PostgreSQL com volume persistente
+- volume/mount do app em `/app/uploads`
+- backup periódico do banco PostgreSQL
+- backup periódico da pasta de uploads
+
+Sem volume persistente no `/app/uploads`, imagens enviadas podem sumir em um redeploy. Sem backup do PostgreSQL, existe risco de perda se a VPS for apagada, reinstalada ou corrompida.

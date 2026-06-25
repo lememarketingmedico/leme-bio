@@ -48,6 +48,7 @@ async function migrate() {
   await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS edit_token TEXT DEFAULT '';`);
   await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS show_branding BOOLEAN DEFAULT true;`);
   await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT true;`);
+  await query(`UPDATE bios SET edit_token = md5(random()::text || clock_timestamp()::text) WHERE edit_token IS NULL OR edit_token = '';`);
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_bios_edit_token ON bios(edit_token) WHERE edit_token <> '';`);
 
   await query(`
