@@ -70,6 +70,20 @@ function bioCardHtml(bio, links, opts = {}) {
     </section>`;
 }
 
+function publicBioPage(bio, links) {
+  const title = bio.seo_title || `${bio.title} | Links`;
+  const description = bio.seo_description || bio.description || bio.subtitle || 'Links principais.';
+  const styleVars = `--primary:${escapeAttr(bio.primary_color)};--secondary:${escapeAttr(bio.secondary_color)};--text:${escapeAttr(bio.text_color)};`;
+
+  const body = `<main class="public-shell ${fontClass(bio.font_family)} template-${escapeAttr(bio.template)} buttons-${escapeAttr(bio.button_style)}" style="${styleVars}${backgroundStyle(bio)}">
+    <div class="ambient one"></div>
+    <div class="ambient two"></div>
+    ${bioCardHtml(bio, links)}
+  </main>`;
+
+  return publicHtml({ title, description, body });
+}
+
 function defaultBuilderData() {
   return {
     title: '',
