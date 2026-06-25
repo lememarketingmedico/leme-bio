@@ -2,13 +2,14 @@ const { publicHtml } = require('./layout');
 const { escapeHtml, escapeAttr, renderIcon } = require('../utils');
 
 const templateOptions = [
+  ['ocean', 'Ocean LEME'],
   ['premium', 'Premium azul'],
   ['clinic', 'Clínica clean'],
   ['minimal', 'Minimalista'],
   ['dark', 'Dark elegante'],
-  ['ocean', 'Ocean LEME'],
   ['light', 'Claro premium'],
-  ['editorial', 'Editorial']
+  ['editorial', 'Editorial'],
+  ['soft', 'Soft glass']
 ];
 
 const buttonStyleOptions = [
@@ -20,6 +21,19 @@ const buttonStyleOptions = [
   ['clean', 'Clean'],
   ['shadow', 'Com sombra'],
   ['glow', 'Glow']
+];
+
+const buttonKinds = [
+  ['whatsapp', 'WhatsApp'],
+  ['phone', 'Telefone'],
+  ['email', 'E-mail'],
+  ['instagram', 'Instagram'],
+  ['site', 'Site ou link externo'],
+  ['maps', 'Localização / Maps'],
+  ['google_review', 'Avaliação no Google'],
+  ['form', 'Formulário'],
+  ['video', 'Vídeo'],
+  ['download', 'Arquivo / download']
 ];
 
 function fontClass(font = 'inter') {
@@ -70,8 +84,61 @@ function editBubble(section, label = 'Editar') {
   return `<button class="edit-bubble" type="button" data-edit-section="${escapeAttr(section)}" aria-label="${escapeAttr(label)}">${renderIcon('edit')}</button>`;
 }
 
+function inferLinkConfig(link = {}) {
+  if (link.kind) {
+    return {
+      kind: link.kind,
+      value: link.value || '',
+      place_id: link.place_id || '',
+      icon: link.icon || inferIconFromKind(link.kind)
+    };
+  }
+
+  const url = String(link.url || '');
+  const lower = url.toLowerCase();
+  if (lower.startsWith('mailto:')) {
+    return { kind: 'email', value: url.replace(/^mailto:/i, ''), place_id: '', icon: 'email' };
+  }
+  if (lower.startsWith('tel:')) {
+    return { kind: 'phone', value: url.replace(/^tel:/i, ''), place_id: '', icon: 'phone' };
+  }
+  if (lower.includes('wa.me/') || lower.includes('api.whatsapp.com')) {
+    const digits = url.replace(/\D/g, '');
+    return { kind: 'whatsapp', value: digits, place_id: '', icon: 'whatsapp' };
+  }
+  if (lower.includes('instagram.com/')) {
+    const username = url.split('instagram.com/')[1]?.split(/[/?#]/)[0] || '';
+    return { kind: 'instagram', value: username, place_id: '', icon: 'instagram' };
+  }
+  if (lower.includes('search.google.com/local/writereview')) {
+    const match = url.match(/[?&]placeid=([^&]+)/i);
+    return { kind: 'google_review', value: link.label || '', place_id: match ? decodeURIComponent(match[1]) : '', icon: 'star' };
+  }
+  if (lower.includes('google.com/maps') || lower.includes('maps.app.goo.gl')) {
+    return { kind: 'maps', value: url, place_id: '', icon: 'maps' };
+  }
+  return { kind: 'site', value: url, place_id: '', icon: link.icon || 'site' };
+}
+
+function inferIconFromKind(kind) {
+  const map = {
+    whatsapp: 'whatsapp',
+    phone: 'phone',
+    email: 'email',
+    instagram: 'instagram',
+    site: 'site',
+    maps: 'maps',
+    google_review: 'star',
+    form: 'form',
+    video: 'video',
+    download: 'download'
+  };
+  return map[kind] || 'link';
+}
+
 function bioCardHtml(bio, links, opts = {}) {
-  const linkHtml = links.map((link, index) => {
+  const linkHtml = links.map((rawLink, index) => {
+    const link = { ...rawLink, ...inferLinkConfig(rawLink) };
     const href = opts.preview ? '#' : `/go/${link.id}`;
     const editButton = opts.editable ? `<button class="edit-bubble link-edit-bubble" type="button" data-edit-link-index="${index}" aria-label="Editar botão">${renderIcon('edit')}</button>` : '';
     return `<div class="public-link-wrap ${opts.editable ? 'editable-public-link' : ''}">
@@ -145,24 +212,36 @@ function defaultBuilderData() {
     background_color_2: '#123250',
     text_color: '#FFFFFF',
     links: [
-      { label: 'Meu WhatsApp', url: '', icon: 'whatsapp', description: '', is_highlight: true },
-      { label: 'Meu Instagram', url: '', icon: 'instagram', description: '', is_highlight: false }
+      { label: 'Meu WhatsApp', kind: 'whatsapp', value: '', place_id: '', url: '', icon: 'whatsapp', description: '', is_highlight: true },
+      { label: 'Meu Instagram', kind: 'instagram', value: '', place_id: '', url: '', icon: 'instagram', description: '', is_highlight: false }
     ]
   };
 }
 
-function renderHiddenLink(link = {}, index = 0) {
+function renderHiddenLink(rawLink = {}, index = 0) {
+  const link = { ...rawLink, ...inferLinkConfig(rawLink) };
   return `<div class="builder-hidden-link" data-link-card data-index="${index}">
     <input type="hidden" name="link_label_${index}" value="${escapeAttr(link.label || '')}" data-field="label">
     <input type="hidden" name="link_url_${index}" value="${escapeAttr(link.url || '')}" data-field="url">
     <input type="hidden" name="link_icon_${index}" value="${escapeAttr(link.icon || 'link')}" data-field="icon">
     <input type="hidden" name="link_description_${index}" value="${escapeAttr(link.description || '')}" data-field="description">
     <input type="hidden" name="link_highlight_${index}" value="${link.is_highlight ? 'on' : ''}" data-field="highlight">
+    <input type="hidden" name="link_kind_${index}" value="${escapeAttr(link.kind || 'site')}" data-field="kind">
+    <input type="hidden" name="link_value_${index}" value="${escapeAttr(link.value || '')}" data-field="value">
+    <input type="hidden" name="link_place_id_${index}" value="${escapeAttr(link.place_id || '')}" data-field="place_id">
   </div>`;
 }
 
 function selectOptions(options, selected) {
   return options.map(([key, label]) => `<option value="${escapeAttr(key)}" ${selected === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+}
+
+function colorInput(name, label, value) {
+  return `<label>${escapeHtml(label)}<div class="color-row"><input type="color" name="${name}" value="${escapeAttr(value || '#000000')}"><input type="text" name="${name}_text" value="${escapeAttr(value || '#000000')}" data-color-sync="${escapeAttr(name)}"></div></label>`;
+}
+
+function buttonKindOptions() {
+  return buttonKinds.map(([key, label]) => `<option value="${escapeAttr(key)}">${escapeHtml(label)}</option>`).join('');
 }
 
 function builderPage({ form = {}, error = '', editMode = false, editToken = '' }) {
@@ -174,129 +253,133 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
     logo_url: form.logo_preview_url || ''
   };
   const helpMessage = encodeURIComponent('Gostaria de ajuda para criar meu link da bio');
+  const styleVars = `--primary:${escapeAttr(previewBio.primary_color)};--secondary:${escapeAttr(previewBio.secondary_color)};--text:${escapeAttr(previewBio.text_color)};`;
 
   const body = `<main class="builder-page visual-editor-page">
-    <section class="builder-workspace visual-editor-workspace">
+    <section class="builder-shell">
       <form class="builder-form-visual" method="post" action="${editMode ? `/edit/${escapeAttr(editToken)}` : '/create'}" enctype="multipart/form-data" id="public-builder-form">
-        <aside class="builder-column builder-visual-column">
-          <div class="builder-editor-scroll">
-            <div class="builder-topbar compact-topbar">
-              <img class="hero-logo compact" src="/assets/leme-logo.png" alt="LEME Marketing Médico">
-              <div class="builder-topbar-copy">
-                <span class="home-badge">LEME Bio</span>
-                <h1>Personalize o visual</h1>
-                <p>Edite os textos, foto e botões direto no celular ao lado. Aqui você muda apenas o estilo da página.</p>
-              </div>
-            </div>
+        <input type="file" name="avatar" id="avatar-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+        <input type="file" name="logo" id="logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+        <input type="hidden" name="title" value="${escapeAttr(data.title || '')}">
+        <input type="hidden" name="subtitle" value="${escapeAttr(data.subtitle || '')}">
+        <input type="hidden" name="description" value="${escapeAttr(data.description || '')}">
 
-            ${error ? `<div class="alert danger">${escapeHtml(error)}</div>` : ''}
-
-            <section class="panel builder-form-card compact-card">
-              <div class="section-head single">
-                <div>
-                  <h2>Modelos</h2>
-                  <p>Escolha a base visual da página.</p>
-                </div>
-              </div>
-              <label>Modelo da página
-                <select name="template">${selectOptions(templateOptions, data.template)}</select>
-              </label>
-            </section>
-
-            <section class="panel builder-form-card compact-card">
-              <div class="section-head single">
-                <div>
-                  <h2>Botões</h2>
-                  <p>Defina o estilo dos botões do link na bio.</p>
-                </div>
-              </div>
-              <label>Estilo dos botões
-                <select name="button_style">${selectOptions(buttonStyleOptions, data.button_style)}</select>
-              </label>
-            </section>
-
-            <section class="panel builder-form-card compact-card">
-              <div class="section-head single">
-                <div>
-                  <h2>Cores</h2>
-                  <p>Use os tons da LEME ou ajuste conforme a marca.</p>
-                </div>
-              </div>
-              <div class="preset-grid">
-                <button type="button" class="preset-chip" data-preset="#1E5C89,#5DA1D1,#081321,#123250">Azul LEME</button>
-                <button type="button" class="preset-chip" data-preset="#0F3559,#76B9E7,#06101D,#1B4163">Premium</button>
-                <button type="button" class="preset-chip" data-preset="#183C5D,#9BC9E8,#EFF6FB,#DCECF7">Claro</button>
-                <button type="button" class="preset-chip" data-preset="#111827,#6AA8D6,#070B14,#111827">Dark</button>
-              </div>
-              <div class="grid-2 colors-grid simplified-colors">
-                ${colorInput('primary_color', 'Principal', data.primary_color)}
-                ${colorInput('secondary_color', 'Apoio', data.secondary_color)}
-                ${colorInput('background_color', 'Fundo 1', data.background_color)}
-                ${colorInput('background_color_2', 'Fundo 2', data.background_color_2)}
-              </div>
-            </section>
-
-            <section class="panel builder-form-card compact-card help-card">
-              <div class="section-head single">
-                <div>
-                  <h2>Quer que a LEME faça?</h2>
-                  <p>Se preferir, nós montamos gratuitamente para você.</p>
-                </div>
-              </div>
-              <a class="btn help-whatsapp" href="https://wa.me/553491003193?text=${helpMessage}" target="_blank" rel="noopener">Pedir ajuda no WhatsApp</a>
-            </section>
-
-            <div class="builder-submit-row wide">
-              <button class="btn primary large" type="submit">${editMode ? 'Salvar alterações' : 'Criar meu link na bio'}</button>
-            </div>
-          </div>
-        </aside>
-
-        <section class="builder-column builder-preview-column visual-preview-column">
-          <div class="preview-sticky-shell">
-            <div class="preview-side-header">
-              <span class="home-badge">Editor visual</span>
-              <p>Clique nos círculos com lápis para editar foto, textos e botões.</p>
-            </div>
-            <div class="phone-mockup visual-phone-mockup">
-              <div class="phone-notch"></div>
-              <div class="phone-screen preview-surface" id="builder-preview" style="--primary:${escapeAttr(previewBio.primary_color)};--secondary:${escapeAttr(previewBio.secondary_color)};--text:${escapeAttr(previewBio.text_color)};${backgroundStyle(previewBio)}">
-                ${bioCardHtml(previewBio, links, { preview: true, editable: true })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="builder-mobile-preview-section">
-          <div class="section-head single mobile-head-preview">
+        <div class="builder-left-column">
+          <div class="builder-header-clean">
+            <img class="builder-brand-white" src="/assets/leme-logo.png" alt="LEME Marketing Médico">
             <div>
-              <h2>Editor visual</h2>
-              <p>Clique no mockup para editar.</p>
+              <span class="home-badge">LEME Bio</span>
+              <h1>Personalize sua página</h1>
+              <p>Edite foto, textos e botões direto no mockup. Na esquerda você ajusta só o visual.</p>
             </div>
           </div>
-          <div class="phone-mockup phone-mockup-mobile visual-phone-mockup">
-            <div class="phone-notch"></div>
-            <div class="phone-screen preview-surface" id="builder-preview-mobile" style="--primary:${escapeAttr(previewBio.primary_color)};--secondary:${escapeAttr(previewBio.secondary_color)};--text:${escapeAttr(previewBio.text_color)};${backgroundStyle(previewBio)}">
-              ${bioCardHtml(previewBio, links, { preview: true, editable: true })}
-            </div>
-          </div>
-        </section>
 
-        <div class="builder-hidden-fields" aria-hidden="true">
-          <input type="hidden" name="title" value="${escapeAttr(data.title || '')}">
-          <input type="hidden" name="slug" value="${escapeAttr(data.slug || '')}">
-          <input type="hidden" name="subtitle" value="${escapeAttr(data.subtitle || '')}">
-          <input type="hidden" name="description" value="${escapeAttr(data.description || '')}">
-          <input type="hidden" name="text_color" value="#FFFFFF">
-          <input type="hidden" name="text_color_text" value="#FFFFFF">
-          <input type="file" name="avatar" id="avatar-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
-          <input type="file" name="logo" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
-          <div id="builder-links-list">${links.map((link, index) => renderHiddenLink(link, index)).join('')}</div>
-          <template id="link-row-template">${renderHiddenLink({}, '__INDEX__')}</template>
+          ${error ? `<div class="alert danger">${escapeHtml(error)}</div>` : ''}
+
+          <div class="control-grid-two">
+            <section class="panel builder-form-card compact-card">
+              <div class="section-head single"><div><h2>Modelos</h2><p>Escolha o estilo base da página.</p></div></div>
+              <label>Modelo da página<select name="template">${selectOptions(templateOptions, data.template)}</select></label>
+            </section>
+
+            <section class="panel builder-form-card compact-card">
+              <div class="section-head single"><div><h2>Botões</h2><p>Defina o estilo visual dos botões.</p></div></div>
+              <label>Estilo dos botões<select name="button_style">${selectOptions(buttonStyleOptions, data.button_style)}</select></label>
+            </section>
+          </div>
+
+          <section class="panel builder-form-card compact-card">
+            <div class="section-head single"><div><h2>Cores</h2><p>Escolha um preset rápido ou ajuste manualmente.</p></div></div>
+            <div class="preset-palette-grid">
+              <button type="button" class="preset-chip" data-preset="leme">Azul LEME</button>
+              <button type="button" class="preset-chip" data-preset="premium">Premium</button>
+              <button type="button" class="preset-chip" data-preset="light">Claro</button>
+              <button type="button" class="preset-chip" data-preset="dark">Dark</button>
+            </div>
+            <div class="grid-2 colors-grid spaced-top">
+              ${colorInput('primary_color', 'Cor principal', data.primary_color)}
+              ${colorInput('secondary_color', 'Cor de apoio', data.secondary_color)}
+              ${colorInput('background_color', 'Fundo 1', data.background_color)}
+              ${colorInput('background_color_2', 'Fundo 2', data.background_color_2)}
+            </div>
+          </section>
+
+          <section class="panel builder-form-card compact-card">
+            <div class="section-head single"><div><h2>Opções extras</h2><p>Logo opcional e endereço final da página.</p></div></div>
+            <div class="grid-2">
+              <label>Endereço da página<input name="slug" required maxlength="80" value="${escapeAttr(data.slug || '')}" placeholder="seu-nome"></label>
+              <label>Logo opcional da marca<button type="button" class="fake-file-btn" id="logo-select-button">Selecionar logo</button></label>
+            </div>
+            <p class="hint">As imagens são otimizadas automaticamente para carregar mais rápido.</p>
+          </section>
+
+          <section class="panel builder-form-card compact-card help-card">
+            <div class="section-head single stack-on-mobile">
+              <div>
+                <h2>Precisa de ajuda?</h2>
+                <p>Se preferir, a equipe da LEME pode montar seu link da bio para você.</p>
+              </div>
+              <a class="btn primary" href="https://wa.me/553491003193?text=${helpMessage}" target="_blank" rel="noopener">Falar com a LEME</a>
+            </div>
+          </section>
+
+          <div class="builder-submit-row wide">
+            <button class="btn primary large" type="submit">${editMode ? 'Salvar alterações' : 'Criar meu link na bio'}</button>
+          </div>
         </div>
 
-        ${sectionModal()}
-        ${linkModal()}
+        <div class="builder-right-column">
+          <div class="preview-floating-shell">
+            <div class="preview-floating-head">
+              <span class="home-badge">Editor visual</span>
+              <p>Clique nos ícones discretos para editar. Os textos abrem um editor translúcido e os botões usam pop-up.</p>
+            </div>
+            <div class="phone-mockup floating-mockup">
+              <div class="phone-notch"></div>
+              <div class="phone-screen preview-surface template-${escapeAttr(previewBio.template)} buttons-${escapeAttr(previewBio.button_style)} ${fontClass(previewBio.font_family)}" id="builder-preview" style="${styleVars}${backgroundStyle(previewBio)}">
+                ${bioCardHtml(previewBio, links, { preview: true, editable: true })}
+                <div class="inline-editor-panel" id="inline-text-editor" hidden>
+                  <div class="inline-editor-head">
+                    <strong id="inline-editor-title">Editar texto</strong>
+                    <button type="button" class="modal-close tiny" id="close-inline-editor">×</button>
+                  </div>
+                  <div class="inline-editor-body">
+                    <input type="text" id="inline-editor-input" maxlength="180">
+                    <small id="inline-editor-help">As alterações aparecem em tempo real.</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="builder-links-hidden">${links.map((link, index) => renderHiddenLink(link, index)).join('')}</div>
+          </div>
+        </div>
+
+        <div class="builder-modal-backdrop" id="link-modal-backdrop" hidden>
+          <div class="builder-modal" role="dialog" aria-modal="true" aria-labelledby="link-modal-title">
+            <div class="builder-modal-head">
+              <h3 id="link-modal-title">Configurar botão</h3>
+              <button type="button" class="modal-close" id="close-link-modal">×</button>
+            </div>
+            <div class="builder-modal-body">
+              <label>Texto do botão<input type="text" id="modal-link-label" maxlength="50" placeholder="Agende sua consulta"></label>
+              <label>Tipo do botão<select id="modal-link-kind">${buttonKindOptions()}</select></label>
+              <label id="modal-link-value-wrap"><span>Valor do botão</span><input type="text" id="modal-link-value" maxlength="300" placeholder="Digite aqui"></label>
+              <div id="google-business-search-block" class="google-search-block" hidden>
+                <button type="button" class="btn small" id="google-business-search-btn">Buscar perfil no Google</button>
+                <div class="google-search-results" id="google-business-results"></div>
+              </div>
+              <label>Descrição curta<input type="text" id="modal-link-description" maxlength="70" placeholder="Opcional"></label>
+              <label class="modal-checkbox"><input type="checkbox" id="modal-link-highlight"> Deixar esse botão em destaque</label>
+            </div>
+            <div class="builder-modal-actions">
+              <button type="button" class="btn ghost" id="delete-link-btn">Excluir botão</button>
+              <div class="builder-modal-actions-right">
+                <button type="button" class="btn" id="cancel-link-btn">Cancelar</button>
+                <button type="button" class="btn primary" id="save-link-btn">Salvar botão</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
     </section>
   </main>`;
@@ -307,69 +390,6 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
     body,
     head: '<script defer src="/assets/builder.js"></script>'
   });
-}
-
-function colorInput(name, label, value) {
-  return `<label>${escapeHtml(label)}<div class="color-row"><input type="color" name="${name}" value="${escapeAttr(value || '#000000')}"><input type="text" name="${name}_text" value="${escapeAttr(value || '#000000')}" data-color-sync="${escapeAttr(name)}"></div></label>`;
-}
-
-function iconLabel(icon) {
-  const labels = {
-    whatsapp: 'WhatsApp', instagram: 'Instagram', site: 'Site', agenda: 'Agenda', maps: 'Localização', phone: 'Telefone',
-    email: 'E-mail', form: 'Formulário', video: 'Vídeo', download: 'Download', star: 'Destaque', clinic: 'Clínica', doctor: 'Médico', link: 'Link'
-  };
-  return labels[icon] || icon;
-}
-
-function sectionModal() {
-  return `<div class="builder-modal-backdrop" id="section-modal-backdrop" hidden>
-    <div class="builder-modal" role="dialog" aria-modal="true" aria-labelledby="section-modal-title">
-      <div class="builder-modal-head">
-        <h3 id="section-modal-title">Editar seção</h3>
-        <button type="button" class="modal-close" id="close-section-modal">×</button>
-      </div>
-      <div class="builder-modal-body">
-        <label id="section-single-field">Texto<input type="text" id="section-input" maxlength="180"></label>
-        <label id="section-textarea-field" hidden>Texto<textarea id="section-textarea" rows="5" maxlength="220"></textarea></label>
-      </div>
-      <div class="builder-modal-actions">
-        <span class="submit-tip">A alteração aparece na prévia em tempo real.</span>
-        <div class="builder-modal-actions-right">
-          <button type="button" class="btn" id="cancel-section-btn">Cancelar</button>
-          <button type="button" class="btn primary" id="save-section-btn">Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function linkModal() {
-  return `<div class="builder-modal-backdrop" id="link-modal-backdrop" hidden>
-    <div class="builder-modal" role="dialog" aria-modal="true" aria-labelledby="link-modal-title">
-      <div class="builder-modal-head">
-        <h3 id="link-modal-title">Configurar botão</h3>
-        <button type="button" class="modal-close" id="close-link-modal">×</button>
-      </div>
-      <div class="builder-modal-body">
-        <label>Texto do botão<input type="text" id="modal-link-label" maxlength="50" placeholder="Agendar consulta"></label>
-        <label>URL do botão<input type="text" id="modal-link-url" maxlength="300" placeholder="https://..."></label>
-        <label>Ícone
-          <select id="modal-link-icon">
-            ${['whatsapp','instagram','site','agenda','maps','phone','email','form','video','download','star','clinic','doctor','link'].map(icon => `<option value="${icon}">${iconLabel(icon)}</option>`).join('')}
-          </select>
-        </label>
-        <label>Descrição curta<input type="text" id="modal-link-description" maxlength="70" placeholder="Opcional"></label>
-        <label class="modal-checkbox"><input type="checkbox" id="modal-link-highlight"> Deixar esse botão em destaque</label>
-      </div>
-      <div class="builder-modal-actions">
-        <button type="button" class="btn ghost" id="delete-link-btn">Excluir botão</button>
-        <div class="builder-modal-actions-right">
-          <button type="button" class="btn" id="cancel-link-btn">Cancelar</button>
-          <button type="button" class="btn primary" id="save-link-btn">Salvar botão</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
 }
 
 function successPage({ bioUrl, editUrl }) {

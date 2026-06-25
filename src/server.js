@@ -138,7 +138,7 @@ async function parseBioPayload(req, existing = {}) {
     website: normalizeSocialInput(body.website),
     seo_title: String(body.seo_title || '').trim(),
     seo_description: String(body.seo_description || '').trim(),
-    template: ['premium', 'clinic', 'minimal', 'dark', 'ocean', 'light', 'editorial'].includes(body.template) ? body.template : 'ocean',
+    template: ['premium', 'clinic', 'minimal', 'dark', 'ocean', 'light', 'editorial', 'soft'].includes(body.template) ? body.template : 'ocean',
     primary_color: pickColor(body, 'primary_color', existing.primary_color || '#1B2E5A'),
     secondary_color: pickColor(body, 'secondary_color', existing.secondary_color || '#D7B56D'),
     background_type: ['gradient', 'solid', 'image'].includes(body.background_type) ? body.background_type : 'gradient',
@@ -170,7 +170,7 @@ async function parsePublicBioPayload(req, existing = {}) {
     location: normalizeSocialInput(body.location),
     seo_title: String(body.title || '').trim(),
     seo_description: String(body.description || '').trim(),
-    template: ['premium', 'clinic', 'minimal', 'dark', 'ocean', 'light', 'editorial'].includes(body.template) ? body.template : 'ocean',
+    template: ['premium', 'clinic', 'minimal', 'dark', 'ocean', 'light', 'editorial', 'soft'].includes(body.template) ? body.template : 'ocean',
     primary_color: pickColor(body, 'primary_color', existing.primary_color || '#1B2E5A'),
     secondary_color: pickColor(body, 'secondary_color', existing.secondary_color || '#D7B56D'),
     background_type: 'gradient',
@@ -213,7 +213,7 @@ function parsePublicLinksPayload(body) {
     const is_highlight = boolFromForm(body[`link_highlight_${index}`]);
 
     if (!label && !url) continue;
-    if (!label || !url) throw new Error(`Preencha texto e URL do link ${index + 1}.`);
+    if (!label || !url) throw new Error(`Preencha o conteúdo do botão ${index + 1}.`);
     links.push({
       label,
       url: normalizeUrl(url),
@@ -261,7 +261,10 @@ function buildFormState(body = {}, bio = {}) {
         url: String(url || ''),
         description: String(description || ''),
         icon: allowedIcons.includes(icon) ? icon : 'link',
-        is_highlight: boolFromForm(body[`link_highlight_${index}`])
+        is_highlight: boolFromForm(body[`link_highlight_${index}`]),
+        kind: String(body[`link_kind_${index}`] || ''),
+        value: String(body[`link_value_${index}`] || ''),
+        place_id: String(body[`link_place_id_${index}`] || '')
       });
     }
   }
@@ -277,6 +280,41 @@ function normalizeSocialInput(value) {
   if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(raw)) return raw;
   if (/^\+?\d[\d\s().-]{9,}$/.test(raw)) return `https://wa.me/${raw.replace(/\D/g, '')}`;
   return normalizeUrl(raw);
+}
+
+async function searchGoogleBusinessProfiles(queryText = '') {
+  const q = String(queryText || '').trim();
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY || '';
+  if (!q || !apiKey) return [];
+
+  try {
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress'
+      },
+      body: JSON.stringify({
+        textQuery: q,
+        languageCode: 'pt-BR',
+        regionCode: 'BR',
+        maxResultCount: 5
+      })
+    });
+
+    if (!response.ok) return [];
+    const data = await response.json();
+    const places = Array.isArray(data.places) ? data.places : [];
+    return places.map((place) => ({
+      place_id: place.id || '',
+      name: place.displayName?.text || '',
+      address: place.formattedAddress || ''
+    })).filter((item) => item.place_id && item.name);
+  } catch (error) {
+    console.error('Erro ao consultar Google Places:', error.message);
+    return [];
+  }
 }
 
 async function verifyAdmin(email, password) {
