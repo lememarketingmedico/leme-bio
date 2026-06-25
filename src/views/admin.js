@@ -1,5 +1,5 @@
 const { adminLayout } = require('./layout');
-const { escapeHtml, escapeAttr, formatNumber, formatDateTime } = require('../utils');
+const { escapeHtml, escapeAttr, formatNumber, formatDateTime, renderIcon } = require('../utils');
 
 const iconOptions = [
   ['link', 'Link'], ['whatsapp', 'WhatsApp'], ['instagram', 'Instagram'], ['site', 'Site'],
@@ -78,7 +78,7 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
   const isEdit = mode === 'edit';
   const action = isEdit ? `/admin/bios/${bio.id}` : '/admin/bios';
   const publicUrl = isEdit ? `/${bio.slug}` : '';
-  const linkRows = links.map(linkForm).join('') || `<div class="empty small-empty">Nenhum link cadastrado ainda.</div>`;
+  const linkRows = links.map(adminLinkCard).join('') || `<div class="empty small-empty">Nenhum link cadastrado ainda.</div>`;
   const analyticsHtml = analytics ? renderAnalytics(analytics) : '';
 
   const body = `
@@ -143,20 +143,19 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
 
     ${isEdit ? `
       <section class="panel links-panel">
-        <div class="panel-title"><h2>Links da página</h2><span>Use a ordem para organizar os botões. Limite de 10 links.</span></div>
-        <div class="link-list">${linkRows}</div>
-        <form class="add-link-form" method="post" action="/admin/bios/${bio.id}/links">
-          <h3>Adicionar novo link</h3>
-          <div class="grid-6">
-            <label>Texto<input name="label" required placeholder="Agendar consulta"></label>
-            <label>URL<input name="url" required placeholder="https://..."></label>
-            ${select('icon', 'Ícone', 'link', iconOptions)}
-            <label>Descrição<input name="description" placeholder="Opcional"></label>
-            <label>Ordem<input type="number" name="sort_order" value="${links.length + 1}"></label>
-            <div class="checks inline"><label><input type="checkbox" name="is_highlight"> Destaque</label></div>
-          </div>
-          <button class="btn primary" type="submit">Adicionar link</button>
+        <div class="panel-title"><h2>Links da página</h2><span>Clique em um botão para editar em pop-up. Limite de 10 links.</span></div>
+        <div class="link-list admin-link-card-list">${linkRows}</div>
+        <button class="btn primary" type="button" id="admin-add-link-btn" ${links.length >= 10 ? 'disabled' : ''}>Adicionar novo botão</button>
+        <form class="admin-link-hidden-form" id="admin-add-link-form" method="post" action="/admin/bios/${bio.id}/links">
+          <input type="hidden" name="label" value="">
+          <input type="hidden" name="url" value="">
+          <input type="hidden" name="icon" value="link">
+          <input type="hidden" name="description" value="">
+          <input type="hidden" name="sort_order" value="${links.length + 1}">
+          <input type="hidden" name="is_highlight" value="">
+          <input type="hidden" name="is_active" value="on">
         </form>
+        ${adminLinkModal()}
       </section>
       ${analyticsHtml}
       <section class="danger-zone">
@@ -168,25 +167,53 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
   return adminLayout({ title: isEdit ? `Editar ${bio.title}` : 'Nova página', active: isEdit ? 'bios' : 'new', body });
 }
 
-function linkForm(link) {
-  return `<form class="link-item" method="post" action="/admin/links/${link.id}">
-    <div class="link-handle">↕</div>
-    <div class="grid-6">
-      <label>Texto<input name="label" required value="${escapeAttr(link.label)}"></label>
-      <label>URL<input name="url" required value="${escapeAttr(link.url)}"></label>
-      ${select('icon', 'Ícone', link.icon || 'link', iconOptions)}
-      <label>Descrição<input name="description" value="${escapeAttr(link.description || '')}"></label>
-      <label>Ordem<input type="number" name="sort_order" value="${Number(link.sort_order || 0)}"></label>
-      <div class="checks inline">
-        <label><input type="checkbox" name="is_active" ${link.is_active ? 'checked' : ''}> Ativo</label>
-        <label><input type="checkbox" name="is_highlight" ${link.is_highlight ? 'checked' : ''}> Destaque</label>
+function adminLinkCard(link) {
+  return `<form class="admin-link-card" method="post" action="/admin/links/${link.id}" data-admin-link-form>
+    <input type="hidden" name="label" value="${escapeAttr(link.label)}" data-field="label">
+    <input type="hidden" name="url" value="${escapeAttr(link.url)}" data-field="url">
+    <input type="hidden" name="icon" value="${escapeAttr(link.icon || 'link')}" data-field="icon">
+    <input type="hidden" name="description" value="${escapeAttr(link.description || '')}" data-field="description">
+    <input type="hidden" name="sort_order" value="${Number(link.sort_order || 0)}" data-field="sort_order">
+    <input type="hidden" name="is_highlight" value="${link.is_highlight ? 'on' : ''}" data-field="highlight">
+    <input type="hidden" name="is_active" value="${link.is_active ? 'on' : ''}" data-field="active">
+    <button class="admin-link-card-button" type="button" data-admin-edit-link>
+      <span class="admin-link-card-icon">${renderIcon(link.icon || 'link')}</span>
+      <span class="admin-link-card-copy">
+        <strong data-display="label">${escapeHtml(link.label)}</strong>
+        <small data-display="url">${escapeHtml(link.url)}</small>
+      </span>
+      <span class="admin-link-card-meta">${link.is_highlight ? 'Destaque' : 'Editar'}</span>
+    </button>
+    <button class="admin-link-delete-hidden" type="submit" formaction="/admin/links/${link.id}/delete" formmethod="post" data-admin-delete-link onclick="return confirm('Excluir este link?')">Excluir</button>
+  </form>`;
+}
+
+function adminLinkModal() {
+  const iconOptionsHtml = iconOptions.map(([key, text]) => `<option value="${escapeAttr(key)}">${escapeHtml(text)}</option>`).join('');
+  return `<div class="builder-modal-backdrop admin-modal-backdrop" id="admin-link-modal-backdrop" hidden>
+    <div class="builder-modal admin-link-modal" role="dialog" aria-modal="true" aria-labelledby="admin-link-modal-title">
+      <div class="builder-modal-head">
+        <h3 id="admin-link-modal-title">Configurar botão</h3>
+        <button type="button" class="modal-close" id="admin-close-link-modal">×</button>
+      </div>
+      <div class="builder-modal-body">
+        <label>Texto do botão<input type="text" id="admin-modal-link-label" maxlength="50" placeholder="Agendar consulta"></label>
+        <label>URL do botão<input type="text" id="admin-modal-link-url" maxlength="300" placeholder="https://..."></label>
+        <label>Ícone<select id="admin-modal-link-icon">${iconOptionsHtml}</select></label>
+        <label>Descrição curta<input type="text" id="admin-modal-link-description" maxlength="70" placeholder="Opcional"></label>
+        <label>Ordem<input type="number" id="admin-modal-link-order" placeholder="1"></label>
+        <label class="modal-checkbox"><input type="checkbox" id="admin-modal-link-highlight"> Deixar esse botão em destaque</label>
+        <label class="modal-checkbox"><input type="checkbox" id="admin-modal-link-active" checked> Botão ativo</label>
+      </div>
+      <div class="builder-modal-actions">
+        <button type="button" class="btn ghost" id="admin-delete-link-btn">Excluir botão</button>
+        <div class="builder-modal-actions-right">
+          <button type="button" class="btn" id="admin-cancel-link-btn">Cancelar</button>
+          <button type="button" class="btn primary" id="admin-save-link-btn">Salvar botão</button>
+        </div>
       </div>
     </div>
-    <div class="link-actions">
-      <button class="btn small primary" type="submit">Salvar</button>
-      <button class="btn small danger" type="submit" formaction="/admin/links/${link.id}/delete" formmethod="post" onclick="return confirm('Excluir este link?')">Excluir</button>
-    </div>
-  </form>`;
+  </div>`;
 }
 
 function renderAnalytics(analytics) {

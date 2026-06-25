@@ -125,3 +125,46 @@ textarea { resize: vertical; }
   .link-handle { display: none; }
   .link-actions { padding-bottom: 0; }
 }
+
+/* Modal editing pattern shared with the public builder */
+.builder-modal-backdrop[hidden], .admin-modal-backdrop[hidden] { display: none !important; }
+.admin-link-card-list { display: grid; gap: 12px; margin-bottom: 14px; }
+.admin-link-card { display: block; }
+.admin-link-card-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #DCE7F1;
+  border-radius: 18px;
+  background: #FBFDFF;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.admin-link-card-button:hover { transform: translateY(-1px); border-color: #9BC3E2; box-shadow: 0 12px 28px rgba(14,49,82,.08); }
+.admin-link-card-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 16px; color: #F6FBFF; background: linear-gradient(135deg, #1E5C89, #5DA1D1); }
+.admin-link-card-icon .icon { width: 22px; height: 22px; }
+.admin-link-card-copy { text-align: left; min-width: 0; }
+.admin-link-card-copy strong { display: block; color: var(--text); font-size: 15px; }
+.admin-link-card-copy small { display: block; margin-top: 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-link-card-meta { display: inline-flex; align-items: center; justify-content: center; padding: 8px 10px; border-radius: 999px; background: #EAF3FA; color: var(--blue); font-size: 12px; font-weight: 800; }
+.admin-link-hidden-form, .admin-link-delete-hidden { display: none; }
+.builder-modal-backdrop, .admin-modal-backdrop { position: fixed; inset: 0; background: rgba(6,16,28,.55); display: grid; place-items: center; z-index: 200; padding: 18px; }
+.builder-modal, .admin-link-modal { width: min(540px, 100%); background: white; color: var(--text); border-radius: 28px; padding: 22px; box-shadow: 0 30px 100px rgba(0,0,0,.24); }
+.builder-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.builder-modal-head h3 { margin: 0; font-size: 24px; }
+.modal-close { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: #F7FAFD; color: var(--text); cursor: pointer; font-size: 24px; }
+.builder-modal-body { display: grid; gap: 14px; }
+.modal-checkbox { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.modal-checkbox input { width: auto; }
+.builder-modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.builder-modal-actions-right { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .admin-link-card-button { grid-template-columns: 50px 1fr; }
+  .admin-link-card-meta { justify-self: start; margin-left: 64px; }
+  .builder-modal-actions { display: grid; }
+  .builder-modal-actions .btn, .builder-modal-actions-right { width: 100%; }
+  .builder-modal-actions-right { display: grid; }
+}
