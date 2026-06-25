@@ -8,18 +8,21 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const sharp = require('sharp');
 
 const db = require('./db');
 const { loginPage } = require('./views/layout');
 const { dashboardPage, biosListPage, bioFormPage, notFoundAdmin } = require('./views/admin');
-const { publicBioPage, homePage, notFoundPage } = require('./views/public');
+const { publicBioPage, homePage, notFoundPage, builderPage, successPage } = require('./views/public');
 const { requireAdmin, setAuthCookie, clearAuthCookie } = require('./auth');
 const {
   ensureSlug,
   normalizeUrl,
   isSafeHex,
   boolFromForm,
-  hashIp
+  hashIp,
+  iconOptions,
+  slugify
 } = require('./utils');
 
 const app = express();
@@ -27,6 +30,8 @@ const PORT = Number(process.env.PORT || 3000);
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
 const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 4);
+const reservedSlugs = ['admin', 'assets', 'uploads', 'go', 'health', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'create', 'edit', 'success'];
+const allowedIcons = iconOptions.map(([value]) => value);
 
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -37,20 +42,12 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '7d' }));
 app.use('/uploads', express.static(uploadDir, { maxAge: '30d' }));
 
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
-  }
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: maxUploadMb * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
@@ -71,16 +68,51 @@ function uploadFields(req, res, next) {
   });
 }
 
-function fileUrl(req, name) {
-  const file = req.files?.[name]?.[0];
-  return file ? `/uploads/${file.filename}` : null;
+function uploadFieldsPublic(req, res, next) {
+  const handler = upload.fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'logo', maxCount: 1 }
+  ]);
+  handler(req, res, err => {
+    if (err) return res.status(400).send(builderPage({ form: buildFormState(req.body), error: err.message }));
+    next();
+  });
+}
+
+async function saveUploadedImage(file, kind = 'avatar') {
+  if (!file) return '';
+
+  if (file.mimetype === 'image/svg+xml') {
+    const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.svg`;
+    await fs.promises.writeFile(path.join(uploadDir, filename), file.buffer);
+    return `/uploads/${filename}`;
+  }
+
+  const presets = {
+    avatar: { width: 720, height: 720, quality: 82 },
+    logo: { width: 800, height: 300, quality: 84 },
+    background: { width: 1600, height: 1200, quality: 78 }
+  };
+  const { width, height, quality } = presets[kind] || presets.avatar;
+  const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.webp`;
+  const outputPath = path.join(uploadDir, filename);
+  await sharp(file.buffer)
+    .rotate()
+    .resize(width, height, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality })
+    .toFile(outputPath);
+  return `/uploads/${filename}`;
+}
+
+function pickFile(req, name) {
+  return req.files?.[name]?.[0] || null;
 }
 
 function pickColor(body, name, fallback) {
   return isSafeHex(body[`${name}_text`] || body[name], fallback);
 }
 
-function parseBioPayload(req, existing = {}) {
+async function parseBioPayload(req, existing = {}) {
   const body = req.body;
   const slug = ensureSlug(body.slug || body.title);
   return {
@@ -103,11 +135,43 @@ function parseBioPayload(req, existing = {}) {
     button_style: ['glass', 'solid', 'outline', 'soft'].includes(body.button_style) ? body.button_style : 'glass',
     font_family: ['inter', 'serif', 'rounded'].includes(body.font_family) ? body.font_family : 'inter',
     text_color: pickColor(body, 'text_color', existing.text_color || '#FFFFFF'),
-    show_branding: boolFromForm(body.show_branding),
+    show_branding: true,
     published: boolFromForm(body.published),
-    avatar_url: fileUrl(req, 'avatar') || existing.avatar_url || '',
-    logo_url: fileUrl(req, 'logo') || existing.logo_url || '',
-    background_image_url: fileUrl(req, 'background') || existing.background_image_url || ''
+    avatar_url: (await saveUploadedImage(pickFile(req, 'avatar'), 'avatar')) || existing.avatar_url || '',
+    logo_url: (await saveUploadedImage(pickFile(req, 'logo'), 'logo')) || existing.logo_url || '',
+    background_image_url: (await saveUploadedImage(pickFile(req, 'background'), 'background')) || existing.background_image_url || ''
+  };
+}
+
+async function parsePublicBioPayload(req, existing = {}) {
+  const body = req.body;
+  const slug = ensureSlug(body.slug || body.title);
+  if (reservedSlugs.includes(slug)) throw new Error('Escolha outro endereço para sua página.');
+  return {
+    slug,
+    title: String(body.title || '').trim(),
+    subtitle: String(body.subtitle || '').trim(),
+    description: String(body.description || '').trim(),
+    instagram: normalizeSocialInput(body.instagram),
+    whatsapp: normalizeSocialInput(body.whatsapp),
+    website: normalizeSocialInput(body.website),
+    location: normalizeSocialInput(body.location),
+    seo_title: String(body.title || '').trim(),
+    seo_description: String(body.description || '').trim(),
+    template: ['premium', 'clinic', 'minimal', 'dark'].includes(body.template) ? body.template : 'premium',
+    primary_color: pickColor(body, 'primary_color', existing.primary_color || '#1B2E5A'),
+    secondary_color: pickColor(body, 'secondary_color', existing.secondary_color || '#D7B56D'),
+    background_type: 'gradient',
+    background_color: pickColor(body, 'background_color', existing.background_color || '#091121'),
+    background_color_2: pickColor(body, 'background_color_2', existing.background_color_2 || '#1B2E5A'),
+    background_image_url: '',
+    button_style: ['glass', 'solid', 'outline', 'soft'].includes(body.button_style) ? body.button_style : 'glass',
+    font_family: 'inter',
+    text_color: pickColor(body, 'text_color', existing.text_color || '#FFFFFF'),
+    show_branding: true,
+    published: true,
+    avatar_url: (await saveUploadedImage(pickFile(req, 'avatar'), 'avatar')) || existing.avatar_url || '',
+    logo_url: (await saveUploadedImage(pickFile(req, 'logo'), 'logo')) || existing.logo_url || ''
   };
 }
 
@@ -116,7 +180,6 @@ function parseLinkPayload(body) {
   const url = normalizeUrl(body.url || '');
   if (!label) throw new Error('O texto do link é obrigatório.');
   if (!url) throw new Error('A URL é obrigatória.');
-  const allowedIcons = ['link', 'whatsapp', 'instagram', 'site', 'agenda', 'maps', 'phone', 'email', 'form', 'video', 'download', 'star', 'clinic', 'doctor'];
   return {
     label,
     url,
@@ -126,6 +189,73 @@ function parseLinkPayload(body) {
     is_active: body.is_active === undefined ? true : boolFromForm(body.is_active),
     sort_order: Number.parseInt(body.sort_order, 10) || 0
   };
+}
+
+function parsePublicLinksPayload(body) {
+  const links = [];
+  for (let index = 0; index < 10; index += 1) {
+    const label = String(body[`link_label_${index}`] || '').trim();
+    const url = String(body[`link_url_${index}`] || '').trim();
+    const description = String(body[`link_description_${index}`] || '').trim();
+    const icon = allowedIcons.includes(body[`link_icon_${index}`]) ? body[`link_icon_${index}`] : 'link';
+    const is_highlight = boolFromForm(body[`link_highlight_${index}`]);
+
+    if (!label && !url) continue;
+    if (!label || !url) throw new Error(`Preencha texto e URL do link ${index + 1}.`);
+    links.push({
+      label,
+      url: normalizeUrl(url),
+      icon,
+      description,
+      is_highlight,
+      is_active: true,
+      sort_order: index + 1
+    });
+  }
+  if (links.length > 10) throw new Error('O limite máximo é de 10 links.');
+  return links;
+}
+
+function buildFormState(body = {}, bio = {}) {
+  const state = {
+    title: body.title || bio.title || '',
+    slug: body.slug || bio.slug || '',
+    subtitle: body.subtitle || bio.subtitle || '',
+    description: body.description || bio.description || '',
+    instagram: body.instagram || bio.instagram || '',
+    whatsapp: body.whatsapp || bio.whatsapp || '',
+    website: body.website || bio.website || '',
+    location: body.location || bio.location || '',
+    template: body.template || bio.template || 'premium',
+    button_style: body.button_style || bio.button_style || 'glass',
+    primary_color: body.primary_color_text || body.primary_color || bio.primary_color || '#1B2E5A',
+    secondary_color: body.secondary_color_text || body.secondary_color || bio.secondary_color || '#D7B56D',
+    background_color: body.background_color_text || body.background_color || bio.background_color || '#091121',
+    background_color_2: body.background_color_2_text || body.background_color_2 || bio.background_color_2 || '#1B2E5A',
+    text_color: body.text_color_text || body.text_color || bio.text_color || '#FFFFFF',
+    avatar_preview_url: bio.avatar_url || '',
+    logo_preview_url: bio.logo_url || ''
+  };
+
+  const links = [];
+  for (let index = 0; index < 10; index += 1) {
+    const label = body[`link_label_${index}`];
+    const url = body[`link_url_${index}`];
+    const description = body[`link_description_${index}`];
+    const icon = body[`link_icon_${index}`];
+    if (label !== undefined || url !== undefined || description !== undefined || icon !== undefined) {
+      links.push({
+        label: String(label || ''),
+        url: String(url || ''),
+        description: String(description || ''),
+        icon: allowedIcons.includes(icon) ? icon : 'link',
+        is_highlight: boolFromForm(body[`link_highlight_${index}`])
+      });
+    }
+  }
+  if (!links.length && Array.isArray(bio.links)) state.links = bio.links;
+  else state.links = links;
+  return state;
 }
 
 function normalizeSocialInput(value) {
@@ -198,20 +328,20 @@ app.get('/admin/bios/new', requireAdmin, async (req, res) => {
 
 app.post('/admin/bios', requireAdmin, uploadFields, async (req, res) => {
   try {
-    const bio = parseBioPayload(req);
+    const bio = await parseBioPayload(req);
     const result = await db.query(`
       INSERT INTO bios (
         slug, title, subtitle, description, avatar_url, logo_url, instagram, whatsapp, location, website,
         seo_title, seo_description, template, primary_color, secondary_color, background_type,
         background_color, background_color_2, background_image_url, button_style, font_family, text_color,
-        show_branding, published, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW())
+        show_branding, published, updated_at, edit_token
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW(),$25)
       RETURNING id
     `, [
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram, bio.whatsapp,
       bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template, bio.primary_color,
       bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2, bio.background_image_url,
-      bio.button_style, bio.font_family, bio.text_color, bio.show_branding, bio.published
+      bio.button_style, bio.font_family, bio.text_color, true, bio.published, crypto.randomBytes(24).toString('hex')
     ]);
     res.redirect(`/admin/bios/${result.rows[0].id}/edit`);
   } catch (error) {
@@ -230,7 +360,7 @@ app.post('/admin/bios/:id', requireAdmin, uploadFields, async (req, res) => {
   const existing = await db.getBioById(req.params.id);
   if (!existing) return res.status(404).send(notFoundAdmin('Página não encontrada.'));
   try {
-    const bio = parseBioPayload(req, existing);
+    const bio = await parseBioPayload(req, existing);
     await db.query(`
       UPDATE bios SET
         slug=$1, title=$2, subtitle=$3, description=$4, avatar_url=$5, logo_url=$6,
@@ -243,7 +373,7 @@ app.post('/admin/bios/:id', requireAdmin, uploadFields, async (req, res) => {
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram,
       bio.whatsapp, bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template,
       bio.primary_color, bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2,
-      bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, bio.show_branding,
+      bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, true,
       bio.published, existing.id
     ]);
     res.redirect(`/admin/bios/${existing.id}/edit`);
@@ -263,6 +393,8 @@ app.post('/admin/bios/:id/links', requireAdmin, async (req, res) => {
   const bio = await db.getBioById(req.params.id);
   if (!bio) return res.status(404).send(notFoundAdmin('Página não encontrada.'));
   try {
+    const count = await db.query('SELECT COUNT(*)::int AS total FROM links WHERE bio_id = $1', [bio.id]);
+    if (count.rows[0].total >= 10) throw new Error('O limite máximo é de 10 links por página.');
     const link = parseLinkPayload(req.body);
     await db.query(`
       INSERT INTO links (bio_id, label, url, icon, description, is_highlight, is_active, sort_order, updated_at)
@@ -299,6 +431,115 @@ app.post('/admin/links/:id/delete', requireAdmin, async (req, res) => {
   res.redirect(bioId ? `/admin/bios/${bioId}/edit` : '/admin/bios');
 });
 
+app.get('/', async (req, res) => {
+  res.send(homePage());
+});
+
+app.post('/create', uploadFieldsPublic, async (req, res) => {
+  try {
+    const bio = await parsePublicBioPayload(req);
+    const links = parsePublicLinksPayload(req.body);
+    const editToken = crypto.randomBytes(24).toString('hex');
+    const result = await db.query(`
+      INSERT INTO bios (
+        slug, title, subtitle, description, avatar_url, logo_url, instagram, whatsapp, location, website,
+        seo_title, seo_description, template, primary_color, secondary_color, background_type,
+        background_color, background_color_2, background_image_url, button_style, font_family, text_color,
+        show_branding, published, updated_at, edit_token
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW(),$25)
+      RETURNING id, slug
+    `, [
+      bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram, bio.whatsapp,
+      bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template, bio.primary_color,
+      bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2, bio.background_image_url,
+      bio.button_style, bio.font_family, bio.text_color, true, true, editToken
+    ]);
+
+    for (const link of links) {
+      await db.query(`
+        INSERT INTO links (bio_id, label, url, icon, description, is_highlight, is_active, sort_order, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,true,$7,NOW())
+      `, [result.rows[0].id, link.label, link.url, link.icon, link.description, link.is_highlight, link.sort_order]);
+    }
+
+    res.redirect(`/success/${result.rows[0].slug}?edit=${editToken}`);
+  } catch (error) {
+    res.status(400).send(builderPage({ form: buildFormState(req.body), error: humanDbError(error) }));
+  }
+});
+
+app.get('/edit/:token', async (req, res) => {
+  const bio = await db.getBioByEditToken(req.params.token);
+  if (!bio) return res.status(404).send(notFoundPage());
+  const links = await db.getLinksByBioId(bio.id);
+  res.send(builderPage({
+    form: {
+      ...bio,
+      avatar_preview_url: bio.avatar_url,
+      logo_preview_url: bio.logo_url,
+      links: links.map(link => ({
+        label: link.label,
+        url: link.url,
+        icon: link.icon,
+        description: link.description,
+        is_highlight: link.is_highlight
+      }))
+    },
+    editMode: true,
+    editToken: bio.edit_token
+  }));
+});
+
+app.post('/edit/:token', uploadFieldsPublic, async (req, res) => {
+  const existing = await db.getBioByEditToken(req.params.token);
+  if (!existing) return res.status(404).send(notFoundPage());
+  try {
+    const bio = await parsePublicBioPayload(req, existing);
+    const links = parsePublicLinksPayload(req.body);
+    await db.query(`
+      UPDATE bios SET
+        slug=$1, title=$2, subtitle=$3, description=$4, avatar_url=$5, logo_url=$6,
+        instagram=$7, whatsapp=$8, location=$9, website=$10, seo_title=$11, seo_description=$12,
+        template=$13, primary_color=$14, secondary_color=$15, background_type=$16,
+        background_color=$17, background_color_2=$18, background_image_url=$19, button_style=$20,
+        font_family=$21, text_color=$22, show_branding=true, published=true, updated_at=NOW()
+      WHERE id=$23
+    `, [
+      bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url,
+      bio.instagram, bio.whatsapp, bio.location, bio.website, bio.seo_title, bio.seo_description,
+      bio.template, bio.primary_color, bio.secondary_color, bio.background_type, bio.background_color,
+      bio.background_color_2, bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, existing.id
+    ]);
+
+    await db.query('DELETE FROM links WHERE bio_id = $1', [existing.id]);
+    for (const link of links) {
+      await db.query(`
+        INSERT INTO links (bio_id, label, url, icon, description, is_highlight, is_active, sort_order, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,true,$7,NOW())
+      `, [existing.id, link.label, link.url, link.icon, link.description, link.is_highlight, link.sort_order]);
+    }
+
+    res.redirect(`/success/${bio.slug}?edit=${existing.edit_token}`);
+  } catch (error) {
+    res.status(400).send(builderPage({
+      form: { ...buildFormState(req.body), avatar_preview_url: existing.avatar_url, logo_preview_url: existing.logo_url },
+      error: humanDbError(error),
+      editMode: true,
+      editToken: existing.edit_token
+    }));
+  }
+});
+
+app.get('/success/:slug', async (req, res) => {
+  const bio = await db.getBioBySlug(req.params.slug);
+  if (!bio) return res.status(404).send(notFoundPage());
+  const editToken = req.query.edit || bio.edit_token;
+  res.send(successPage({
+    bioUrl: `${APP_URL}/${bio.slug}`,
+    editUrl: `${APP_URL}/edit/${editToken}`
+  }));
+});
+
 app.get('/go/:id', async (req, res) => {
   const result = await db.query(`
     SELECT l.*, b.slug, b.id AS bio_id, b.published
@@ -312,10 +553,6 @@ app.get('/go/:id', async (req, res) => {
   res.redirect(normalizeUrl(link.url));
 });
 
-app.get('/', async (req, res) => {
-  res.send(homePage());
-});
-
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${APP_URL}/sitemap.xml\n`);
 });
@@ -327,8 +564,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 app.get('/:slug', async (req, res) => {
-  const reserved = ['admin', 'assets', 'uploads', 'go', 'health', 'favicon.ico', 'robots.txt', 'sitemap.xml'];
-  if (reserved.includes(req.params.slug)) return res.status(404).send(notFoundPage());
+  if (reservedSlugs.includes(req.params.slug)) return res.status(404).send(notFoundPage());
 
   const bio = await db.getBioBySlug(req.params.slug);
   if (!bio || !bio.published) return res.status(404).send(notFoundPage());
@@ -363,7 +599,7 @@ async function trackEvent(req, bioId, linkId, type) {
 }
 
 function humanDbError(error) {
-  if (error.code === '23505') return 'Esse slug já está sendo usado. Escolha outro.';
+  if (error.code === '23505') return 'Esse endereço já está sendo usado. Escolha outro slug.';
   return error.message || 'Não foi possível salvar.';
 }
 

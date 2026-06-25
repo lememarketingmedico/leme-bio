@@ -12,12 +12,12 @@ services:
       - ./uploads:/app/uploads
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: leme_bio
-      POSTGRES_USER: leme_bio
-      POSTGRES_PASSWORD: leme_bio_password
+      POSTGRES_DB: sistema_leme
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: SUA_SENHA_AQUI
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

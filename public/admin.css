@@ -18,7 +18,9 @@ button, input, textarea, select { font: inherit; }
 .admin-body { min-height: 100vh; display: grid; grid-template-columns: 280px 1fr; }
 .sidebar { position: sticky; top: 0; height: 100vh; padding: 28px 22px; background: linear-gradient(180deg, #071226, var(--blue)); color: white; display: flex; flex-direction: column; gap: 28px; }
 .brand { display: flex; align-items: center; gap: 14px; }
+.brand-logo { width: 120px; max-width: 100%; height: auto; display: block; }
 .brand-mark, .login-logo { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(135deg, var(--gold), #fff0bc); color: #0B1832; font-weight: 900; font-size: 24px; box-shadow: 0 14px 35px rgba(215,181,109,.32); }
+.login-brand-image { width: 180px; max-width: 70%; display: block; margin-bottom: 16px; }
 .brand span { display: block; opacity: .65; font-size: 13px; margin-top: 3px; }
 .sidebar nav { display: grid; gap: 8px; }
 .sidebar nav a, .logout { border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.05); color: white; padding: 13px 14px; border-radius: 15px; text-align: left; cursor: pointer; }

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const { normalizeUrl } = require('./utils');
 
@@ -38,10 +39,16 @@ async function migrate() {
       text_color TEXT DEFAULT '#FFFFFF',
       show_branding BOOLEAN DEFAULT true,
       published BOOLEAN DEFAULT true,
+      edit_token TEXT DEFAULT '',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+
+  await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS edit_token TEXT DEFAULT '';`);
+  await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS show_branding BOOLEAN DEFAULT true;`);
+  await query(`ALTER TABLE bios ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT true;`);
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_bios_edit_token ON bios(edit_token) WHERE edit_token <> '';`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS links (
@@ -86,8 +93,8 @@ async function seedIfEmpty() {
     INSERT INTO bios (
       slug, title, subtitle, description, instagram, whatsapp, website, location,
       seo_title, seo_description, template, primary_color, secondary_color,
-      background_type, background_color, background_color_2, button_style, text_color
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      background_type, background_color, background_color_2, button_style, text_color, edit_token
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     RETURNING id
   `, [
     'demo',
@@ -107,7 +114,8 @@ async function seedIfEmpty() {
     '#080D1C',
     '#1B2E5A',
     'glass',
-    '#FFFFFF'
+    '#FFFFFF',
+    crypto.randomBytes(24).toString('hex')
   ]);
 
   const bioId = bio.rows[0].id;
@@ -131,6 +139,11 @@ async function getBioBySlug(slug) {
 
 async function getBioById(id) {
   const result = await query('SELECT * FROM bios WHERE id = $1 LIMIT 1', [id]);
+  return result.rows[0] || null;
+}
+
+async function getBioByEditToken(token) {
+  const result = await query('SELECT * FROM bios WHERE edit_token = $1 LIMIT 1', [token]);
   return result.rows[0] || null;
 }
 
@@ -208,6 +221,7 @@ module.exports = {
   seedIfEmpty,
   getBioBySlug,
   getBioById,
+  getBioByEditToken,
   getLinksByBioId,
   getDashboardStats,
   getBiosWithStats,

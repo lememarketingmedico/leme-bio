@@ -18,7 +18,7 @@ function adminLayout({ title = 'LEME Bio', body = '', active = '' }) {
 <body class="admin-body">
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">L</div>
+      <img class="brand-logo" src="/assets/leme-logo.png" alt="LEME Marketing Médico">
       <div>
         <strong>LEME Bio</strong>
         <span>Painel interno</span>
@@ -65,7 +65,7 @@ function loginPage(error = '') {
 </head>
 <body class="login-body">
   <section class="login-card">
-    <div class="login-logo">L</div>
+    <img class="login-brand-image" src="/assets/leme-logo.png" alt="LEME Marketing Médico">
     <h1>LEME Bio</h1>
     <p>Entre para gerenciar as páginas de link na bio.</p>
     ${error ? `<div class="alert danger">${escapeHtml(error)}</div>` : ''}

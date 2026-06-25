@@ -123,7 +123,7 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
         </div>
         <div class="checks">
           <label><input type="checkbox" name="published" ${bio.published !== false ? 'checked' : ''}> Publicada</label>
-          <label><input type="checkbox" name="show_branding" ${bio.show_branding !== false ? 'checked' : ''}> Mostrar “Criado por LEME”</label>
+          <span class="muted-text">A assinatura da LEME fica fixa em todas as páginas.</span>
         </div>
       </section>
 
@@ -143,7 +143,7 @@ function bioFormPage({ mode = 'new', bio = {}, links = [], analytics = null, err
 
     ${isEdit ? `
       <section class="panel links-panel">
-        <div class="panel-title"><h2>Links da página</h2><span>Use a ordem para organizar os botões.</span></div>
+        <div class="panel-title"><h2>Links da página</h2><span>Use a ordem para organizar os botões. Limite de 10 links.</span></div>
         <div class="link-list">${linkRows}</div>
         <form class="add-link-form" method="post" action="/admin/bios/${bio.id}/links">
           <h3>Adicionar novo link</h3>
