@@ -8,7 +8,12 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
-const sharp = require('sharp');
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (error) {
+  console.warn('Sharp não disponível. O sistema continuará funcionando sem otimização avançada de imagens.');
+}
 
 const db = require('./db');
 const { loginPage } = require('./views/layout');
@@ -88,19 +93,26 @@ async function saveUploadedImage(file, kind = 'avatar') {
     return `/uploads/${filename}`;
   }
 
-  const presets = {
-    avatar: { width: 720, height: 720, quality: 82 },
-    logo: { width: 800, height: 300, quality: 84 },
-    background: { width: 1600, height: 1200, quality: 78 }
-  };
-  const { width, height, quality } = presets[kind] || presets.avatar;
-  const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.webp`;
-  const outputPath = path.join(uploadDir, filename);
-  await sharp(file.buffer)
-    .rotate()
-    .resize(width, height, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality })
-    .toFile(outputPath);
+  if (sharp) {
+    const presets = {
+      avatar: { width: 720, height: 720, quality: 82 },
+      logo: { width: 800, height: 300, quality: 84 },
+      background: { width: 1600, height: 1200, quality: 78 }
+    };
+    const { width, height, quality } = presets[kind] || presets.avatar;
+    const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.webp`;
+    const outputPath = path.join(uploadDir, filename);
+    await sharp(file.buffer)
+      .rotate()
+      .resize(width, height, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality })
+      .toFile(outputPath);
+    return `/uploads/${filename}`;
+  }
+
+  const safeExt = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[file.mimetype] || '.jpg';
+  const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${safeExt}`;
+  await fs.promises.writeFile(path.join(uploadDir, filename), file.buffer);
   return `/uploads/${filename}`;
 }
 
