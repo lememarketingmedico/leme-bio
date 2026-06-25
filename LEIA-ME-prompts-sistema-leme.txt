@@ -1,0 +1,97 @@
+Pacote Prompts - Sistema LEME
+
+Arquivos:
+- tabela-sistema_leme_prompts.csv
+- fluxo-n8n-prompts-sistema-leme.json
+
+1. Criar a tabela no n8n
+
+No n8n, vá em Data Tables e importe o CSV:
+
+tabela-sistema_leme_prompts.csv
+
+Nome da tabela:
+sistema_leme_prompts
+
+Campos criados:
+- id
+- registro_id
+- nome
+- tipo_publicacao
+- texto_prompt
+- ativo
+- descricao
+- ordem
+- prompt_padrao
+- created_at
+- updated_at
+
+2. Importar o fluxo
+
+Importe o arquivo:
+
+fluxo-n8n-prompts-sistema-leme.json
+
+O fluxo cria três endpoints:
+
+POST /webhook/prompts-listar
+POST /webhook/prompts-salvar
+POST /webhook/prompts-deletar
+
+3. IMPORTANTE
+
+Depois que criar a Data Table no n8n, você precisa abrir os nodes Data Table do fluxo e selecionar a tabela:
+
+sistema_leme_prompts
+
+Hoje o JSON está com o placeholder:
+
+COLE_AQUI_O_ID_DA_TABELA_SISTEMA_LEME_PROMPTS
+
+Troque esse placeholder selecionando a tabela na interface do n8n em todos os nodes Data Table:
+- Buscar prompts
+- Procurar prompt
+- Atualizar prompt
+- Inserir prompt
+- Excluir prompt
+
+4. Payload para salvar/criar prompt
+
+Envie para /prompts-salvar:
+
+{
+  "prompt": {
+    "registro_id": "prompt_001",
+    "nome": "Carrossel médico",
+    "tipo_publicacao": "Carrossel",
+    "texto_prompt": "Seu prompt com {cliente}, {titulo}...",
+    "ativo": true,
+    "descricao": "Prompt para carrosséis",
+    "ordem": 1,
+    "prompt_padrao": true
+  }
+}
+
+Se não enviar registro_id, o fluxo gera um automaticamente.
+
+5. Payload para deletar prompt
+
+Envie para /prompts-deletar:
+
+{
+  "registro_id": "prompt_001"
+}
+
+6. Retorno da listagem
+
+/prompts-listar retorna:
+
+{
+  "ok": true,
+  "prompts": [...]
+}
+
+7. Observação
+
+Esse pacote cria a estrutura da tabela e o CRUD no n8n.
+Para o sistema usar estes endpoints em vez do armazenamento local, o próximo passo é conectar os webhooks de prompts dentro do Sistema LEME.
