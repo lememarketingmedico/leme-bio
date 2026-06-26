@@ -15,6 +15,9 @@
   const modalKind = document.getElementById('modal-link-kind');
   const modalValueWrap = document.getElementById('modal-link-value-wrap');
   const modalValue = document.getElementById('modal-link-value');
+  const whatsappSplitFields = document.getElementById('whatsapp-split-fields');
+  const modalCountryCode = document.getElementById('modal-country-code');
+  const modalPhoneNumber = document.getElementById('modal-phone-number');
   const modalDescription = document.getElementById('modal-link-description');
   const modalHighlight = document.getElementById('modal-link-highlight');
   const saveLinkBtn = document.getElementById('save-link-btn');
@@ -45,10 +48,10 @@
 
   const kindMeta = {
     schedule: { label: 'Link personalizado', placeholder: 'https://agenda...', icon: 'agenda', defaultLabel: 'Agendar horário' },
-    whatsapp: { label: 'DDD + número do WhatsApp', placeholder: '3491003193', icon: 'whatsapp', defaultLabel: 'Falar no WhatsApp' },
+    whatsapp: { label: 'WhatsApp', placeholder: '3491003193', icon: 'whatsapp', defaultLabel: 'Falar no WhatsApp' },
     services: { label: 'Link personalizado', placeholder: 'https://...', icon: 'clinic', defaultLabel: 'Conheça nossos serviços' },
     maps: { label: 'Link do Google Maps', placeholder: 'https://maps.google.com/...', icon: 'maps', defaultLabel: 'Ver localização no Google Maps' },
-    reviews: { label: 'Link de avaliações do Google', placeholder: 'https://g.page/r/.../review', icon: 'star', defaultLabel: 'Avaliações no Google' },
+    reviews: { label: 'Link de avaliação do Google', placeholder: 'https://g.page/r/.../review', icon: 'star', defaultLabel: 'Avaliações no Google' },
     site: { label: 'Link do site oficial', placeholder: 'https://seudominio.com.br', icon: 'site', defaultLabel: 'Site oficial' },
     instagram: { label: '@ do Instagram', placeholder: '@seuusuario', icon: 'instagram', defaultLabel: 'Instagram' },
     youtube: { label: 'Link do canal no YouTube', placeholder: 'https://youtube.com/@...', icon: 'video', defaultLabel: 'YouTube' },
@@ -59,19 +62,19 @@
   };
 
   const modelPresets = {
-    ocean: { name: 'Ocean LEME', template: 'ocean', button_style: 'glass', primary: '#1E5C89', secondary: '#5DA1D1', bg1: '#081321', bg2: '#123250' },
-    premium: { name: 'Premium médico', template: 'premium', button_style: 'shadow', primary: '#15395F', secondary: '#83C4EF', bg1: '#07101D', bg2: '#19395B' },
-    clinic: { name: 'Clínica clean', template: 'clinic', button_style: 'soft', primary: '#266B94', secondary: '#9FD5F4', bg1: '#DCECF7', bg2: '#F7FBFF' },
-    minimal: { name: 'Minimalista', template: 'minimal', button_style: 'clean', primary: '#173C60', secondary: '#6EA9D1', bg1: '#0D1B2D', bg2: '#102E4B' },
-    frame: { name: 'Moldura premium', template: 'frame', button_style: 'pill', primary: '#245B82', secondary: '#C2E6FF', bg1: '#06101D', bg2: '#1C4568' },
-    light: { name: 'Claro premium', template: 'light', button_style: 'solid', primary: '#2B719C', secondary: '#62ADD9', bg1: '#EEF7FD', bg2: '#D7EBF8' }
+    ocean: { name: 'Ocean LEME', template: 'ocean', button_style: 'glass', primary: '#1E5C89', secondary: '#5DA1D1', bg1: '#081321', bg2: '#123250', text: '#FFFFFF', icon: '#FFFFFF' },
+    premium: { name: 'Premium médico', template: 'premium', button_style: 'shadow', primary: '#15395F', secondary: '#83C4EF', bg1: '#07101D', bg2: '#19395B', text: '#FFFFFF', icon: '#FFFFFF' },
+    clinic: { name: 'Clínica clean', template: 'clinic', button_style: 'soft', primary: '#266B94', secondary: '#9FD5F4', bg1: '#DCECF7', bg2: '#F7FBFF', text: '#17324A', icon: '#1E5C89' },
+    minimal: { name: 'Minimalista', template: 'minimal', button_style: 'clean', primary: '#173C60', secondary: '#6EA9D1', bg1: '#0D1B2D', bg2: '#102E4B', text: '#FFFFFF', icon: '#FFFFFF' },
+    frame: { name: 'Moldura premium', template: 'frame', button_style: 'pill', primary: '#245B82', secondary: '#C2E6FF', bg1: '#06101D', bg2: '#1C4568', text: '#FFFFFF', icon: '#FFFFFF' },
+    light: { name: 'Claro premium', template: 'light', button_style: 'solid', primary: '#2B719C', secondary: '#62ADD9', bg1: '#EEF7FD', bg2: '#D7EBF8', text: '#17324A', icon: '#1E5C89' }
   };
 
   const colorPresets = {
-    leme: { primary: '#1E5C89', secondary: '#5DA1D1', bg1: '#081321', bg2: '#123250' },
-    premium: { primary: '#15395F', secondary: '#83C4EF', bg1: '#07101D', bg2: '#19395B' },
-    light: { primary: '#2B719C', secondary: '#62ADD9', bg1: '#EEF7FD', bg2: '#D7EBF8' },
-    dark: { primary: '#163B60', secondary: '#5A94C3', bg1: '#040A12', bg2: '#0F2238' }
+    leme: { primary: '#1E5C89', secondary: '#5DA1D1', bg1: '#081321', bg2: '#123250', text: '#FFFFFF', icon: '#FFFFFF' },
+    premium: { primary: '#15395F', secondary: '#83C4EF', bg1: '#07101D', bg2: '#19395B', text: '#FFFFFF', icon: '#FFFFFF' },
+    light: { primary: '#2B719C', secondary: '#62ADD9', bg1: '#EEF7FD', bg2: '#D7EBF8', text: '#17324A', icon: '#1E5C89' },
+    dark: { primary: '#163B60', secondary: '#5A94C3', bg1: '#040A12', bg2: '#0F2238', text: '#FFFFFF', icon: '#FFFFFF' }
   };
 
   function qs(name) { return form.querySelector(`[name="${name}"]`); }
@@ -82,12 +85,19 @@
   function brazilNumber(value) { const digits = onlyDigits(value); return digits.startsWith('55') && digits.length > 11 ? digits : `55${digits}`; }
   function normalizeCustomLink(value) { const raw = String(value || '').trim(); if (!raw) return ''; return /^(https?:\/\/|mailto:|tel:)/i.test(raw) ? raw : `https://${raw}`; }
 
-  function buildUrl(kind, value) {
+  function buildUrl(kind, value, countryCode = '55') {
     const raw = String(value || '').trim();
     if (!raw) return '';
-    if (kind === 'whatsapp') return `https://wa.me/${brazilNumber(raw)}`;
+    if (kind === 'whatsapp') {
+      const country = onlyDigits(countryCode || '55') || '55';
+      const number = onlyDigits(raw);
+      return number ? `https://wa.me/${country}${number}` : '';
+    }
     if (kind === 'phone') return `tel:+${brazilNumber(raw)}`;
-    if (kind === 'email') return `mailto:${raw.replace(/^mailto:/i, '')}`;
+    if (kind === 'email') {
+      const email = raw.replace(/^mailto:/i, '').trim();
+      return email ? `mailto:${email}` : '';
+    }
     if (kind === 'instagram') return `https://instagram.com/${raw.replace(/^@/, '')}`;
     return normalizeCustomLink(raw);
   }
@@ -116,7 +126,8 @@
       secondary_color: qs('secondary_color_text')?.value || qs('secondary_color')?.value || '#5DA1D1',
       background_color: qs('background_color_text')?.value || qs('background_color')?.value || '#081321',
       background_color_2: qs('background_color_2_text')?.value || qs('background_color_2')?.value || '#123250',
-      text_color: '#FFFFFF',
+      text_color: qs('text_color_text')?.value || qs('text_color')?.value || '#FFFFFF',
+      icon_color: qs('icon_color_text')?.value || qs('icon_color')?.value || '#FFFFFF',
       avatar_url: avatarPreviewUrl,
       links: getCards().map(getCardData).filter(link => link.label || link.value || link.url)
     };
@@ -188,7 +199,8 @@
     previewScreen.className = `phone-screen preview-surface template-${state.template} buttons-${state.button_style}`;
     previewScreen.style.setProperty('--primary', state.primary_color);
     previewScreen.style.setProperty('--secondary', state.secondary_color);
-    previewScreen.style.setProperty('--text', '#FFFFFF');
+    previewScreen.style.setProperty('--text', state.text_color);
+    previewScreen.style.setProperty('--icon', state.icon_color);
     previewScreen.style.background = `radial-gradient(circle at 20% 0%, ${state.secondary_color}40 0, transparent 28%), linear-gradient(145deg, ${state.background_color}, ${state.background_color_2})`;
     const existingBio = previewScreen.querySelector('.bio-phone');
     if (existingBio) existingBio.outerHTML = buildBioHtml(state);
@@ -213,7 +225,16 @@
     const meta = kindMeta[data.kind] || kindMeta.site;
     modalKind.value = data.kind || 'schedule';
     modalLabel.value = data.label || meta.defaultLabel;
-    modalValue.value = data.value || '';
+    if ((data.kind || 'schedule') === 'whatsapp') {
+      const parts = String(data.value || '').split('|');
+      modalCountryCode.value = parts[0] || '55';
+      modalPhoneNumber.value = parts[1] || (parts[0] && parts[0] !== '55' ? parts[0] : '');
+      modalValue.value = modalPhoneNumber.value;
+    } else {
+      modalValue.value = data.value || '';
+      modalCountryCode.value = '55';
+      modalPhoneNumber.value = '';
+    }
     modalDescription.value = data.description || '';
     modalHighlight.checked = Boolean(data.is_highlight);
     syncKindUI(false);
@@ -233,17 +254,22 @@
     const span = modalValueWrap.querySelector('span');
     if (span) span.textContent = meta.label;
     modalValue.placeholder = meta.placeholder;
+    const isWhatsApp = modalKind.value === 'whatsapp';
+    if (whatsappSplitFields) whatsappSplitFields.hidden = !isWhatsApp;
+    modalValue.closest('label')?.classList.toggle('hidden-field', isWhatsApp);
     if (updateLabel) modalLabel.value = meta.defaultLabel;
   }
 
   function saveModal() {
     const kind = modalKind.value;
     const meta = kindMeta[kind] || kindMeta.site;
-    const value = modalValue.value.trim();
+    const rawValue = kind === 'whatsapp' ? modalPhoneNumber.value.trim() : modalValue.value.trim();
+    const country = kind === 'whatsapp' ? modalCountryCode.value : '';
+    const value = kind === 'whatsapp' ? `${country}|${rawValue}` : rawValue;
     const data = {
       kind,
       value,
-      url: buildUrl(kind, value),
+      url: buildUrl(kind, rawValue, country),
       label: modalLabel.value.trim() || meta.defaultLabel,
       description: modalDescription.value.trim(),
       is_highlight: modalHighlight.checked,
@@ -287,6 +313,8 @@
     setColor('secondary_color', preset.secondary);
     setColor('background_color', preset.bg1);
     setColor('background_color_2', preset.bg2);
+    if (preset.text) setColor('text_color', preset.text);
+    if (preset.icon) setColor('icon_color', preset.icon);
   }
 
   function applyModel(key) {

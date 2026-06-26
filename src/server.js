@@ -147,6 +147,7 @@ async function parseBioPayload(req, existing = {}) {
     button_style: ['glass', 'solid', 'outline', 'soft', 'pill', 'clean', 'shadow', 'glow'].includes(body.button_style) ? body.button_style : 'glass',
     font_family: ['inter', 'serif', 'rounded'].includes(body.font_family) ? body.font_family : 'inter',
     text_color: pickColor(body, 'text_color', existing.text_color || '#FFFFFF'),
+    icon_color: pickColor(body, 'icon_color', existing.icon_color || existing.text_color || '#FFFFFF'),
     show_branding: true,
     published: boolFromForm(body.published),
     avatar_url: (await saveUploadedImage(pickFile(req, 'avatar'), 'avatar')) || existing.avatar_url || '',
@@ -180,6 +181,7 @@ async function parsePublicBioPayload(req, existing = {}) {
     button_style: ['glass', 'solid', 'outline', 'soft', 'pill', 'clean', 'shadow', 'glow'].includes(body.button_style) ? body.button_style : 'glass',
     font_family: 'inter',
     text_color: pickColor(body, 'text_color', existing.text_color || '#FFFFFF'),
+    icon_color: pickColor(body, 'icon_color', existing.icon_color || existing.text_color || '#FFFFFF'),
     show_branding: true,
     published: true,
     avatar_url: (await saveUploadedImage(pickFile(req, 'avatar'), 'avatar')) || existing.avatar_url || '',
@@ -245,6 +247,7 @@ function buildFormState(body = {}, bio = {}) {
     background_color: body.background_color_text || body.background_color || bio.background_color || '#091121',
     background_color_2: body.background_color_2_text || body.background_color_2 || bio.background_color_2 || '#1B2E5A',
     text_color: body.text_color_text || body.text_color || bio.text_color || '#FFFFFF',
+    icon_color: body.icon_color_text || body.icon_color || bio.icon_color || bio.text_color || '#FFFFFF',
     avatar_preview_url: bio.avatar_url || '',
     logo_preview_url: bio.logo_url || ''
   };
@@ -348,15 +351,15 @@ app.post('/admin/bios', requireAdmin, uploadFields, async (req, res) => {
       INSERT INTO bios (
         slug, title, subtitle, description, avatar_url, logo_url, instagram, whatsapp, location, website,
         seo_title, seo_description, template, primary_color, secondary_color, background_type,
-        background_color, background_color_2, background_image_url, button_style, font_family, text_color,
+        background_color, background_color_2, background_image_url, button_style, font_family, text_color, icon_color,
         show_branding, published, updated_at, edit_token
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW(),$25)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW(),$26)
       RETURNING id
     `, [
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram, bio.whatsapp,
       bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template, bio.primary_color,
       bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2, bio.background_image_url,
-      bio.button_style, bio.font_family, bio.text_color, true, bio.published, crypto.randomBytes(24).toString('hex')
+      bio.button_style, bio.font_family, bio.text_color, bio.icon_color, true, bio.published, crypto.randomBytes(24).toString('hex')
     ]);
     res.redirect(`/admin/bios/${result.rows[0].id}/edit`);
   } catch (error) {
@@ -382,13 +385,13 @@ app.post('/admin/bios/:id', requireAdmin, uploadFields, async (req, res) => {
         instagram=$7, whatsapp=$8, location=$9, website=$10, seo_title=$11, seo_description=$12,
         template=$13, primary_color=$14, secondary_color=$15, background_type=$16,
         background_color=$17, background_color_2=$18, background_image_url=$19, button_style=$20,
-        font_family=$21, text_color=$22, show_branding=$23, published=$24, updated_at=NOW()
-      WHERE id=$25
+        font_family=$21, text_color=$22, icon_color=$23, show_branding=$24, published=$25, updated_at=NOW()
+      WHERE id=$26
     `, [
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram,
       bio.whatsapp, bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template,
       bio.primary_color, bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2,
-      bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, true,
+      bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, bio.icon_color, true,
       bio.published, existing.id
     ]);
     res.redirect(`/admin/bios/${existing.id}/edit`);
@@ -459,15 +462,15 @@ app.post('/create', uploadFieldsPublic, async (req, res) => {
       INSERT INTO bios (
         slug, title, subtitle, description, avatar_url, logo_url, instagram, whatsapp, location, website,
         seo_title, seo_description, template, primary_color, secondary_color, background_type,
-        background_color, background_color_2, background_image_url, button_style, font_family, text_color,
+        background_color, background_color_2, background_image_url, button_style, font_family, text_color, icon_color,
         show_branding, published, updated_at, edit_token
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW(),$25)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW(),$26)
       RETURNING id, slug
     `, [
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url, bio.instagram, bio.whatsapp,
       bio.location, bio.website, bio.seo_title, bio.seo_description, bio.template, bio.primary_color,
       bio.secondary_color, bio.background_type, bio.background_color, bio.background_color_2, bio.background_image_url,
-      bio.button_style, bio.font_family, bio.text_color, true, true, editToken
+      bio.button_style, bio.font_family, bio.text_color, bio.icon_color, true, true, editToken
     ]);
 
     for (const link of links) {
@@ -517,13 +520,13 @@ app.post('/edit/:token', uploadFieldsPublic, async (req, res) => {
         instagram=$7, whatsapp=$8, location=$9, website=$10, seo_title=$11, seo_description=$12,
         template=$13, primary_color=$14, secondary_color=$15, background_type=$16,
         background_color=$17, background_color_2=$18, background_image_url=$19, button_style=$20,
-        font_family=$21, text_color=$22, show_branding=true, published=true, updated_at=NOW()
-      WHERE id=$23
+        font_family=$21, text_color=$22, icon_color=$23, show_branding=true, published=true, updated_at=NOW()
+      WHERE id=$24
     `, [
       bio.slug, bio.title, bio.subtitle, bio.description, bio.avatar_url, bio.logo_url,
       bio.instagram, bio.whatsapp, bio.location, bio.website, bio.seo_title, bio.seo_description,
       bio.template, bio.primary_color, bio.secondary_color, bio.background_type, bio.background_color,
-      bio.background_color_2, bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, existing.id
+      bio.background_color_2, bio.background_image_url, bio.button_style, bio.font_family, bio.text_color, bio.icon_color, existing.id
     ]);
 
     await db.query('DELETE FROM links WHERE bio_id = $1', [existing.id]);

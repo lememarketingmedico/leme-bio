@@ -456,3 +456,168 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue-600); box-s
   .phone-screen { height: auto; min-height: 680px; }
 }
 .builder-left-column { padding-right: 0; }
+
+/* V7 ajustes: mockup 9:19 sem notch, cores de texto/ícones e mini prévias reais */
+.phone-notch { display: none !important; }
+.phone-screen {
+  aspect-ratio: 9 / 19 !important;
+  height: min(82svh, 820px) !important;
+  min-height: 0 !important;
+}
+.public-shell .bio-phone,
+.preview-surface .bio-phone {
+  color: var(--text, #FFFFFF);
+}
+.link-icon,
+.quick-links a,
+.edit-bubble,
+.arrow {
+  color: var(--icon, var(--text, #FFFFFF));
+}
+.link-icon svg,
+.quick-links svg,
+.edit-bubble svg {
+  color: currentColor;
+}
+.color-row input[type="text"] {
+  text-transform: uppercase;
+}
+.modal-main-value.hidden-field {
+  display: none;
+}
+.whatsapp-split-fields {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+}
+.whatsapp-split-fields[hidden] {
+  display: none !important;
+}
+.mini-phone {
+  position: relative;
+  overflow: hidden;
+  color: var(--text);
+}
+.mini-phone .mini-bg-card {
+  position: absolute;
+  inset: auto 8% 8% 8%;
+  height: 54%;
+  border-radius: 12px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+}
+.mini-phone.model-clinic,
+.mini-phone.model-light {
+  color: #16324D;
+}
+.mini-phone.model-clinic .mini-bg-card,
+.mini-phone.model-light .mini-bg-card {
+  background: rgba(255,255,255,.55);
+  border-color: rgba(20,70,110,.14);
+}
+.mini-phone.model-minimal .mini-bg-card {
+  display: none;
+}
+.mini-phone.model-frame .mini-bg-card {
+  inset: 12% 9% 7% 9%;
+  height: 78%;
+  border-radius: 16px;
+  background: rgba(255,255,255,.13);
+}
+.mini-phone .mini-avatar {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  margin: 14px auto 7px;
+  display: block;
+  background: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.22);
+}
+.mini-phone.model-minimal .mini-avatar {
+  box-shadow: none;
+  border-radius: 10px;
+}
+.mini-phone.model-frame .mini-avatar {
+  width: 34px;
+  height: 34px;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.30);
+}
+.mini-phone .mini-line {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .55;
+  margin: 5px auto;
+  width: 44%;
+}
+.mini-phone .mini-line.big {
+  width: 58%;
+  height: 5px;
+  opacity: .75;
+}
+.mini-phone .mini-button {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  margin: 8px auto 0;
+  width: 76%;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.mini-phone.buttons-pill .mini-button {
+  border-radius: 999px;
+}
+.mini-phone.buttons-solid .mini-button {
+  background: var(--primary);
+}
+.mini-phone.buttons-shadow .mini-button {
+  box-shadow: 0 4px 10px rgba(0,0,0,.24);
+}
+.mini-phone.buttons-clean .mini-button {
+  background: transparent;
+  border-color: rgba(255,255,255,.22);
+}
+.mini-phone .mini-button.two {
+  width: 66%;
+}
+.mini-phone.model-light .mini-button,
+.mini-phone.model-clinic .mini-button {
+  background: rgba(30,92,137,.16);
+  border-color: rgba(30,92,137,.16);
+}
+.models-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.model-preview-card {
+  min-height: 260px;
+}
+.model-preview-card .mini-phone {
+  width: 82px;
+  height: 146px;
+  border-radius: 20px;
+  margin-inline: auto;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.14), 0 12px 26px rgba(10,31,55,.12);
+}
+@media (max-width: 780px) {
+  .whatsapp-split-fields { grid-template-columns: 1fr; }
+  .phone-screen { height: auto !important; min-height: 720px !important; }
+}
+
+/* V7.1 proporção vertical de celular sem notch */
+.phone-mockup {
+  max-width: 390px !important;
+}
+.phone-screen {
+  width: 100% !important;
+  aspect-ratio: 9 / 19 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}

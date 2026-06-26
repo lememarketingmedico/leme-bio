@@ -11,7 +11,9 @@ const modelPresets = [
     primary_color: '#1E5C89',
     secondary_color: '#5DA1D1',
     background_color: '#081321',
-    background_color_2: '#123250'
+    background_color_2: '#123250',
+    text_color: '#FFFFFF',
+    icon_color: '#FFFFFF'
   },
   {
     key: 'premium',
@@ -22,7 +24,9 @@ const modelPresets = [
     primary_color: '#15395F',
     secondary_color: '#83C4EF',
     background_color: '#07101D',
-    background_color_2: '#19395B'
+    background_color_2: '#19395B',
+    text_color: '#FFFFFF',
+    icon_color: '#FFFFFF'
   },
   {
     key: 'clinic',
@@ -33,7 +37,9 @@ const modelPresets = [
     primary_color: '#266B94',
     secondary_color: '#9FD5F4',
     background_color: '#DCECF7',
-    background_color_2: '#F7FBFF'
+    background_color_2: '#F7FBFF',
+    text_color: '#17324A',
+    icon_color: '#1E5C89'
   },
   {
     key: 'minimal',
@@ -44,7 +50,9 @@ const modelPresets = [
     primary_color: '#173C60',
     secondary_color: '#6EA9D1',
     background_color: '#0D1B2D',
-    background_color_2: '#102E4B'
+    background_color_2: '#102E4B',
+    text_color: '#FFFFFF',
+    icon_color: '#FFFFFF'
   },
   {
     key: 'frame',
@@ -55,7 +63,9 @@ const modelPresets = [
     primary_color: '#245B82',
     secondary_color: '#C2E6FF',
     background_color: '#06101D',
-    background_color_2: '#1C4568'
+    background_color_2: '#1C4568',
+    text_color: '#FFFFFF',
+    icon_color: '#FFFFFF'
   },
   {
     key: 'light',
@@ -66,7 +76,9 @@ const modelPresets = [
     primary_color: '#2B719C',
     secondary_color: '#62ADD9',
     background_color: '#EEF7FD',
-    background_color_2: '#D7EBF8'
+    background_color_2: '#D7EBF8',
+    text_color: '#17324A',
+    icon_color: '#1E5C89'
   }
 ];
 
@@ -171,7 +183,7 @@ function inferValueFromUrl(kind, url = '') {
   const raw = String(url || '');
   if (kind === 'email') return raw.replace(/^mailto:/i, '');
   if (kind === 'phone') return raw.replace(/^tel:/i, '').replace(/^\+?55/, '');
-  if (kind === 'whatsapp') return raw.replace(/\D/g, '').replace(/^55/, '');
+  if (kind === 'whatsapp') { const digits = raw.replace(/\D/g, ''); return digits.startsWith('55') ? `55|${digits.slice(2)}` : `55|${digits}`; }
   if (kind === 'instagram') return raw.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').split(/[/?#]/)[0];
   return raw;
 }
@@ -235,7 +247,7 @@ function bioCardHtml(bio, links, opts = {}) {
 function publicBioPage(bio, links) {
   const title = bio.seo_title || `${bio.title} | Links`;
   const description = bio.seo_description || bio.description || bio.subtitle || 'Links principais.';
-  const styleVars = `--primary:${escapeAttr(bio.primary_color)};--secondary:${escapeAttr(bio.secondary_color)};--text:${escapeAttr(bio.text_color)};`;
+  const styleVars = `--primary:${escapeAttr(bio.primary_color)};--secondary:${escapeAttr(bio.secondary_color)};--text:${escapeAttr(bio.text_color || '#FFFFFF')};--icon:${escapeAttr(bio.icon_color || bio.text_color || '#FFFFFF')};`;
 
   const body = `<main class="public-shell ${fontClass(bio.font_family)} template-${escapeAttr(bio.template)} buttons-${escapeAttr(bio.button_style)}" style="${styleVars}${backgroundStyle(bio)}">
     <div class="ambient one"></div>
@@ -251,7 +263,7 @@ function defaultBuilderData() {
     title: '', slug: '', subtitle: '', description: '',
     template: 'ocean', button_style: 'glass',
     primary_color: '#1E5C89', secondary_color: '#5DA1D1', background_type: 'gradient',
-    background_color: '#081321', background_color_2: '#123250', text_color: '#FFFFFF',
+    background_color: '#081321', background_color_2: '#123250', text_color: '#FFFFFF', icon_color: '#FFFFFF',
     links: [
       { label: 'Falar no WhatsApp', kind: 'whatsapp', value: '', url: '', icon: 'whatsapp', description: '', is_highlight: true },
       { label: 'Instagram', kind: 'instagram', value: '', url: '', icon: 'instagram', description: '', is_highlight: false }
@@ -286,8 +298,15 @@ function buttonStyleRadios(selected) {
 
 function modelCards() {
   return modelPresets.map(model => `<button type="button" class="model-preview-card" data-model-preset="${escapeAttr(model.key)}">
-    <span class="mini-phone template-${escapeAttr(model.template)} buttons-${escapeAttr(model.button_style)}" style="--primary:${escapeAttr(model.primary_color)};--secondary:${escapeAttr(model.secondary_color)};--text:#fff;background:linear-gradient(145deg, ${escapeAttr(model.background_color)}, ${escapeAttr(model.background_color_2)});">
-      <span class="mini-avatar"></span><span class="mini-line big"></span><span class="mini-line"></span><span class="mini-button"></span><span class="mini-button small"></span><span class="mini-button"></span>
+    <span class="mini-phone model-${escapeAttr(model.key)} template-${escapeAttr(model.template)} buttons-${escapeAttr(model.button_style)}"
+      style="--primary:${escapeAttr(model.primary_color)};--secondary:${escapeAttr(model.secondary_color)};--text:${escapeAttr(model.text_color || '#FFFFFF')};--icon:${escapeAttr(model.icon_color || model.text_color || '#FFFFFF')};background:linear-gradient(145deg, ${escapeAttr(model.background_color)}, ${escapeAttr(model.background_color_2)});">
+      <span class="mini-bg-card"></span>
+      <span class="mini-avatar"></span>
+      <span class="mini-line big"></span>
+      <span class="mini-line"></span>
+      <span class="mini-button one"></span>
+      <span class="mini-button two"></span>
+      <span class="mini-button three"></span>
     </span>
     <strong>${escapeHtml(model.name)}</strong>
     <small>${escapeHtml(model.hint)}</small>
@@ -299,7 +318,7 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
   const links = Array.isArray(form.links) && form.links.length ? form.links : data.links;
   const previewBio = { ...data, avatar_url: form.avatar_preview_url || '' };
   const helpMessage = encodeURIComponent('Gostaria de ajuda para criar meu link da bio');
-  const styleVars = `--primary:${escapeAttr(previewBio.primary_color)};--secondary:${escapeAttr(previewBio.secondary_color)};--text:${escapeAttr(previewBio.text_color)};`;
+  const styleVars = `--primary:${escapeAttr(previewBio.primary_color)};--secondary:${escapeAttr(previewBio.secondary_color)};--text:${escapeAttr(previewBio.text_color || '#FFFFFF')};--icon:${escapeAttr(previewBio.icon_color || previewBio.text_color || '#FFFFFF')};`;
   const selectedModel = modelPresets.find(model => model.template === data.template && model.button_style === data.button_style) || modelPresets.find(model => model.template === data.template) || modelPresets[0];
 
   const body = `<main class="builder-page visual-editor-page">
@@ -351,6 +370,8 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
               ${colorInput('secondary_color', 'Cor de apoio', data.secondary_color)}
               ${colorInput('background_color', 'Fundo 1', data.background_color)}
               ${colorInput('background_color_2', 'Fundo 2', data.background_color_2)}
+              ${colorInput('text_color', 'Cor do texto', data.text_color || '#FFFFFF')}
+              ${colorInput('icon_color', 'Cor dos ícones', data.icon_color || data.text_color || '#FFFFFF')}
             </div>
           </section>
 
@@ -373,7 +394,6 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
           <div class="preview-floating-shell">
             <div class="preview-floating-head"><span class="home-badge">Editor visual</span><p>Mockup em 9:16. Clique no nome, subtítulo ou descrição para editar direto.</p></div>
             <div class="phone-mockup floating-mockup">
-              <div class="phone-notch"></div>
               <div class="phone-screen preview-surface template-${escapeAttr(previewBio.template)} buttons-${escapeAttr(previewBio.button_style)} ${fontClass(previewBio.font_family)}" id="builder-preview" style="${styleVars}${backgroundStyle(previewBio)}">
                 ${bioCardHtml(previewBio, links, { preview: true, editable: true })}
               </div>
@@ -395,7 +415,25 @@ function builderPage({ form = {}, error = '', editMode = false, editToken = '' }
             <div class="builder-modal-body">
               <label>Tipo do botão<select id="modal-link-kind">${buttonKindOptions()}</select></label>
               <label>Texto do botão<input type="text" id="modal-link-label" maxlength="50" placeholder="Ex.: Agendar horário"></label>
-              <label id="modal-link-value-wrap"><span>Link personalizado</span><input type="text" id="modal-link-value" maxlength="300" placeholder="https://..."></label>
+              <div id="modal-link-value-wrap" class="modal-dynamic-field">
+                <label class="modal-main-value"><span>Link personalizado</span><input type="text" id="modal-link-value" maxlength="300" placeholder="https://..."></label>
+                <div class="whatsapp-split-fields" id="whatsapp-split-fields" hidden>
+                  <label>Código do país
+                    <select id="modal-country-code">
+                      <option value="55" selected>+55 Brasil</option>
+                      <option value="1">+1 EUA/Canadá</option>
+                      <option value="351">+351 Portugal</option>
+                      <option value="44">+44 Reino Unido</option>
+                      <option value="34">+34 Espanha</option>
+                      <option value="54">+54 Argentina</option>
+                      <option value="56">+56 Chile</option>
+                      <option value="57">+57 Colômbia</option>
+                      <option value="52">+52 México</option>
+                    </select>
+                  </label>
+                  <label>Número com DDD<input type="text" id="modal-phone-number" maxlength="30" placeholder="3491003193"></label>
+                </div>
+              </div>
               <label>Descrição curta<input type="text" id="modal-link-description" maxlength="70" placeholder="Opcional"></label>
               <label class="modal-checkbox"><input type="checkbox" id="modal-link-highlight"> Deixar esse botão em destaque</label>
             </div>
