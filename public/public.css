@@ -339,3 +339,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue-600); box-s
   .phone-mockup { padding: 10px; border-radius: 34px; }
   .phone-screen { min-height: 660px; border-radius: 24px; }
 }
+
+
+/* Correção crítica: o atributo hidden precisa vencer o display:grid do modal */
+.builder-modal-backdrop[hidden],
+.inline-editor-panel[hidden] {
+  display: none !important;
+}
